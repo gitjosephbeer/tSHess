@@ -3,3 +3,6 @@
 bin/
 obj/
 
+# Ignore Visual Studio user files
+*.suo
+
