@@ -354,10 +354,31 @@ namespace tSHess.Engine
 					while ((line = sr.ReadLine()) != null) 
 					{
 						SnapShot s = SnapShot.StartUpSnapShot();
-						line = line.Trim().Replace("  "," ");
-						while (line.IndexOf("  ") > -1)
-							line = line.Replace("  "," ");
-						string[] tokens = line.Split(new char[] {' '});
+						// strip leading numeric label like "#14 " (keep rest of line),
+						// then strip inline comments ("#", ";" or "//") and skip empty lines
+						line = line.Trim();
+						if (line.StartsWith("#"))
+						{
+							int j = 1;
+							while (j < line.Length && Char.IsDigit(line[j])) j++;
+							if (j > 1 && (j == line.Length || Char.IsWhiteSpace(line[j])))
+							{
+								line = line.Substring(j).TrimStart();
+							}
+						}
+						int idxHash = line.IndexOf('#');
+						int idxSemi = line.IndexOf(';');
+						int idxSlash = line.IndexOf("//", StringComparison.Ordinal);
+						int commentIdx = -1;
+						if (idxHash >= 0) commentIdx = idxHash;
+						if (idxSemi >= 0 && (commentIdx == -1 || idxSemi < commentIdx)) commentIdx = idxSemi;
+						if (idxSlash >= 0 && (commentIdx == -1 || idxSlash < commentIdx)) commentIdx = idxSlash;
+						if (commentIdx >= 0)
+							line = line.Substring(0, commentIdx).Trim();
+						if (line.Length == 0)
+							continue;
+						// split on whitespace and remove empty tokens
+						string[] tokens = line.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
 						for (int i = 0; i < (int)(tokens.Length / 2); i++)
 						{
 							int from = 0;
