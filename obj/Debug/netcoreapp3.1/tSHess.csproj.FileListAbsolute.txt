@@ -1,0 +1,14 @@
+C:\_work\projects\csharp\tSHess_v1_0_8_mig\obj\Debug\netcoreapp3.1\tSHess.csprojAssemblyReference.cache
+C:\_work\projects\csharp\tSHess_v1_0_8_mig\obj\Debug\netcoreapp3.1\tSHess.UI.Board.resources
+C:\_work\projects\csharp\tSHess_v1_0_8_mig\obj\Debug\netcoreapp3.1\tSHess.csproj.GenerateResource.cache
+C:\_work\projects\csharp\tSHess_v1_0_8_mig\obj\Debug\netcoreapp3.1\tSHess.csproj.CoreCompileInputs.cache
+C:\_work\projects\csharp\tSHess_v1_0_8_mig\bin\Debug\netcoreapp3.1\C#ESS.exe
+C:\_work\projects\csharp\tSHess_v1_0_8_mig\bin\Debug\netcoreapp3.1\openings.txt
+C:\_work\projects\csharp\tSHess_v1_0_8_mig\bin\Debug\netcoreapp3.1\C#ESS.deps.json
+C:\_work\projects\csharp\tSHess_v1_0_8_mig\bin\Debug\netcoreapp3.1\C#ESS.runtimeconfig.json
+C:\_work\projects\csharp\tSHess_v1_0_8_mig\bin\Debug\netcoreapp3.1\C#ESS.runtimeconfig.dev.json
+C:\_work\projects\csharp\tSHess_v1_0_8_mig\bin\Debug\netcoreapp3.1\C#ESS.dll
+C:\_work\projects\csharp\tSHess_v1_0_8_mig\bin\Debug\netcoreapp3.1\C#ESS.pdb
+C:\_work\projects\csharp\tSHess_v1_0_8_mig\obj\Debug\netcoreapp3.1\C#ESS.dll
+C:\_work\projects\csharp\tSHess_v1_0_8_mig\obj\Debug\netcoreapp3.1\C#ESS.pdb
+C:\_work\projects\csharp\tSHess_v1_0_8_mig\obj\Debug\netcoreapp3.1\tSHess.genruntimeconfig.cache

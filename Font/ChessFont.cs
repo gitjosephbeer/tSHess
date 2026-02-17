@@ -1,0 +1,219 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace tSHess.Font
+{
+    public enum ChessFont
+    {
+        [ChessFontResourceName("tSHess.Resources.TT_USUAL.TTF")]
+        [ChessFontMappings(ChessFontSymbol.EmptyWhiteField, ' ')]
+        [ChessFontMappings(ChessFontSymbol.EmptyBlackField, '+')]
+        [ChessFontMappings(ChessFontSymbol.WhitePawnOnWhiteField, 'p')]
+        [ChessFontMappings(ChessFontSymbol.WhiteRookOnWhiteField, 'r')]
+        [ChessFontMappings(ChessFontSymbol.WhiteKnightOnWhiteField, 'n')]
+        [ChessFontMappings(ChessFontSymbol.WhiteBishopOnWhiteField, 'b')]
+        [ChessFontMappings(ChessFontSymbol.WhiteQueenOnWhiteField, 'q')]
+        [ChessFontMappings(ChessFontSymbol.WhiteKingOnWhiteField, 'k')]
+        [ChessFontMappings(ChessFontSymbol.WhitePawnOnBlackField, 'P')]
+        [ChessFontMappings(ChessFontSymbol.WhiteRookOnBlackField, 'R')]
+        [ChessFontMappings(ChessFontSymbol.WhiteKnightOnBlackField, 'N')]
+        [ChessFontMappings(ChessFontSymbol.WhiteBishopOnBlackField, 'B')]
+        [ChessFontMappings(ChessFontSymbol.WhiteQueenOnBlackField, 'Q')]
+        [ChessFontMappings(ChessFontSymbol.WhiteKingOnBlackField, 'K')]
+        [ChessFontMappings(ChessFontSymbol.BlackPawnOnWhiteField, 'o')]
+        [ChessFontMappings(ChessFontSymbol.BlackRookOnWhiteField, 't')]
+        [ChessFontMappings(ChessFontSymbol.BlackKnightOnWhiteField, 'm')]
+        [ChessFontMappings(ChessFontSymbol.BlackBishopOnWhiteField, 'v')]
+        [ChessFontMappings(ChessFontSymbol.BlackQueenOnWhiteField, 'w')]
+        [ChessFontMappings(ChessFontSymbol.BlackKingOnWhiteField, 'l')]
+        [ChessFontMappings(ChessFontSymbol.BlackPawnOnBlackField, 'O')]
+        [ChessFontMappings(ChessFontSymbol.BlackRookOnBlackField, 'T')]
+        [ChessFontMappings(ChessFontSymbol.BlackKnightOnBlackField, 'M')]
+        [ChessFontMappings(ChessFontSymbol.BlackBishopOnBlackField, 'V')]
+        [ChessFontMappings(ChessFontSymbol.BlackQueenOnBlackField, 'W')]
+        [ChessFontMappings(ChessFontSymbol.BlackKingOnBlackField, 'L')]
+        [ChessFontMappings(ChessFontSymbol.BorderUpperLeftCorner, '!')]
+        [ChessFontMappings(ChessFontSymbol.BorderUpperEdge, '"')]
+        [ChessFontMappings(ChessFontSymbol.BorderUpperRightCorner, '#')]
+        [ChessFontMappings(ChessFontSymbol.BorderRightEdge, '%')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerRightCorner, ')')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdge, '(')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerLeftCorner, '/')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge, '$')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge1, 'à')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge2, 'á')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge3, 'â')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge4, 'ã')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge5, 'ä')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge6, 'å')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge7, 'æ')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge8, 'ç')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeA, 'è')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeB, 'é')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeC, 'ê')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeD, 'ë')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeE, 'ì')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeF, 'í')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeG, 'î')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeH, 'ï')]
+        Usual = 0,
+        [ChessFontResourceName("tSHess.Resources.MERIFONT.TTF")]
+        [ChessFontMappings(ChessFontSymbol.EmptyWhiteField, ' ')]
+        [ChessFontMappings(ChessFontSymbol.EmptyBlackField, '+')]
+        [ChessFontMappings(ChessFontSymbol.WhitePawnOnWhiteField, 'p')]
+        [ChessFontMappings(ChessFontSymbol.WhiteRookOnWhiteField, 'r')]
+        [ChessFontMappings(ChessFontSymbol.WhiteKnightOnWhiteField, 'n')]
+        [ChessFontMappings(ChessFontSymbol.WhiteBishopOnWhiteField, 'b')]
+        [ChessFontMappings(ChessFontSymbol.WhiteQueenOnWhiteField, 'q')]
+        [ChessFontMappings(ChessFontSymbol.WhiteKingOnWhiteField, 'k')]
+        [ChessFontMappings(ChessFontSymbol.WhitePawnOnBlackField, 'P')]
+        [ChessFontMappings(ChessFontSymbol.WhiteRookOnBlackField, 'R')]
+        [ChessFontMappings(ChessFontSymbol.WhiteKnightOnBlackField, 'N')]
+        [ChessFontMappings(ChessFontSymbol.WhiteBishopOnBlackField, 'B')]
+        [ChessFontMappings(ChessFontSymbol.WhiteQueenOnBlackField, 'Q')]
+        [ChessFontMappings(ChessFontSymbol.WhiteKingOnBlackField, 'K')]
+        [ChessFontMappings(ChessFontSymbol.BlackPawnOnWhiteField, 'o')]
+        [ChessFontMappings(ChessFontSymbol.BlackRookOnWhiteField, 't')]
+        [ChessFontMappings(ChessFontSymbol.BlackKnightOnWhiteField, 'm')]
+        [ChessFontMappings(ChessFontSymbol.BlackBishopOnWhiteField, 'v')]
+        [ChessFontMappings(ChessFontSymbol.BlackQueenOnWhiteField, 'w')]
+        [ChessFontMappings(ChessFontSymbol.BlackKingOnWhiteField, 'l')]
+        [ChessFontMappings(ChessFontSymbol.BlackPawnOnBlackField, 'O')]
+        [ChessFontMappings(ChessFontSymbol.BlackRookOnBlackField, 'T')]
+        [ChessFontMappings(ChessFontSymbol.BlackKnightOnBlackField, 'M')]
+        [ChessFontMappings(ChessFontSymbol.BlackBishopOnBlackField, 'V')]
+        [ChessFontMappings(ChessFontSymbol.BlackQueenOnBlackField, 'W')]
+        [ChessFontMappings(ChessFontSymbol.BlackKingOnBlackField, 'L')]
+        [ChessFontMappings(ChessFontSymbol.BorderUpperLeftCorner, '!')]
+        [ChessFontMappings(ChessFontSymbol.BorderUpperEdge, '"')]
+        [ChessFontMappings(ChessFontSymbol.BorderUpperRightCorner, '#')]
+        [ChessFontMappings(ChessFontSymbol.BorderRightEdge, '%')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerRightCorner, ')')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdge, '(')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerLeftCorner, '/')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge, '$')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge1, 'à')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge2, 'á')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge3, 'â')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge4, 'ã')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge5, 'ä')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge6, 'å')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge7, 'æ')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge8, 'ç')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeA, 'è')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeB, 'é')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeC, 'ê')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeD, 'ë')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeE, 'ì')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeF, 'í')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeG, 'î')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeH, 'ï')]
+        Merida = 1,
+        [ChessFontResourceName("tSHess.Resources.CASEFONT.TTF")]
+        [ChessFontMappings(ChessFontSymbol.EmptyWhiteField, ' ')]
+        [ChessFontMappings(ChessFontSymbol.EmptyBlackField, '+')]
+        [ChessFontMappings(ChessFontSymbol.WhitePawnOnWhiteField, 'p')]
+        [ChessFontMappings(ChessFontSymbol.WhiteRookOnWhiteField, 'r')]
+        [ChessFontMappings(ChessFontSymbol.WhiteKnightOnWhiteField, 'n')]
+        [ChessFontMappings(ChessFontSymbol.WhiteBishopOnWhiteField, 'b')]
+        [ChessFontMappings(ChessFontSymbol.WhiteQueenOnWhiteField, 'q')]
+        [ChessFontMappings(ChessFontSymbol.WhiteKingOnWhiteField, 'k')]
+        [ChessFontMappings(ChessFontSymbol.WhitePawnOnBlackField, 'P')]
+        [ChessFontMappings(ChessFontSymbol.WhiteRookOnBlackField, 'R')]
+        [ChessFontMappings(ChessFontSymbol.WhiteKnightOnBlackField, 'N')]
+        [ChessFontMappings(ChessFontSymbol.WhiteBishopOnBlackField, 'B')]
+        [ChessFontMappings(ChessFontSymbol.WhiteQueenOnBlackField, 'Q')]
+        [ChessFontMappings(ChessFontSymbol.WhiteKingOnBlackField, 'K')]
+        [ChessFontMappings(ChessFontSymbol.BlackPawnOnWhiteField, 'o')]
+        [ChessFontMappings(ChessFontSymbol.BlackRookOnWhiteField, 't')]
+        [ChessFontMappings(ChessFontSymbol.BlackKnightOnWhiteField, 'm')]
+        [ChessFontMappings(ChessFontSymbol.BlackBishopOnWhiteField, 'v')]
+        [ChessFontMappings(ChessFontSymbol.BlackQueenOnWhiteField, 'w')]
+        [ChessFontMappings(ChessFontSymbol.BlackKingOnWhiteField, 'l')]
+        [ChessFontMappings(ChessFontSymbol.BlackPawnOnBlackField, 'O')]
+        [ChessFontMappings(ChessFontSymbol.BlackRookOnBlackField, 'T')]
+        [ChessFontMappings(ChessFontSymbol.BlackKnightOnBlackField, 'M')]
+        [ChessFontMappings(ChessFontSymbol.BlackBishopOnBlackField, 'V')]
+        [ChessFontMappings(ChessFontSymbol.BlackQueenOnBlackField, 'W')]
+        [ChessFontMappings(ChessFontSymbol.BlackKingOnBlackField, 'L')]
+        [ChessFontMappings(ChessFontSymbol.BorderUpperLeftCorner, '!')]
+        [ChessFontMappings(ChessFontSymbol.BorderUpperEdge, '"')]
+        [ChessFontMappings(ChessFontSymbol.BorderUpperRightCorner, '#')]
+        [ChessFontMappings(ChessFontSymbol.BorderRightEdge, '%')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerRightCorner, ')')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdge, '(')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerLeftCorner, '/')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge, '$')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge1, 'à')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge2, 'á')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge3, 'â')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge4, 'ã')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge5, 'ä')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge6, 'å')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge7, 'æ')]
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge8, 'ç')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeA, 'è')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeB, 'é')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeC, 'ê')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeD, 'ë')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeE, 'ì')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeF, 'í')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeG, 'î')]
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeH, 'ï')]
+        Cases = 2,
+        [ChessFontResourceName("tSHess.Resources.Zurid___.ttf")]
+        [ChessFontMappings(ChessFontSymbol.EmptyWhiteField, 'S')]//
+        [ChessFontMappings(ChessFontSymbol.EmptyBlackField, 'D')]//
+        [ChessFontMappings(ChessFontSymbol.WhitePawnOnWhiteField, 'P')]//
+        [ChessFontMappings(ChessFontSymbol.WhiteRookOnWhiteField, 'R')]//
+        [ChessFontMappings(ChessFontSymbol.WhiteKnightOnWhiteField, 'N')]//
+        [ChessFontMappings(ChessFontSymbol.WhiteBishopOnWhiteField, 'B')]//
+        [ChessFontMappings(ChessFontSymbol.WhiteQueenOnWhiteField, 'Q')]//
+        [ChessFontMappings(ChessFontSymbol.WhiteKingOnWhiteField, 'K')]//
+        [ChessFontMappings(ChessFontSymbol.WhitePawnOnBlackField, ')')]//
+        [ChessFontMappings(ChessFontSymbol.WhiteRookOnBlackField, '$')]//
+        [ChessFontMappings(ChessFontSymbol.WhiteKnightOnBlackField, 'H')]//
+        [ChessFontMappings(ChessFontSymbol.WhiteBishopOnBlackField, 'G')]//
+        [ChessFontMappings(ChessFontSymbol.WhiteQueenOnBlackField, '!')]//
+        [ChessFontMappings(ChessFontSymbol.WhiteKingOnBlackField, 'I')]//
+        [ChessFontMappings(ChessFontSymbol.BlackPawnOnWhiteField, 'p')]//
+        [ChessFontMappings(ChessFontSymbol.BlackRookOnWhiteField, 'r')]//
+        [ChessFontMappings(ChessFontSymbol.BlackKnightOnWhiteField, 'n')]//
+        [ChessFontMappings(ChessFontSymbol.BlackBishopOnWhiteField, 'b')]//
+        [ChessFontMappings(ChessFontSymbol.BlackQueenOnWhiteField, 'q')]//
+        [ChessFontMappings(ChessFontSymbol.BlackKingOnWhiteField, 'k')]//
+        [ChessFontMappings(ChessFontSymbol.BlackPawnOnBlackField, '0')]//
+        [ChessFontMappings(ChessFontSymbol.BlackRookOnBlackField, '4')]//
+        [ChessFontMappings(ChessFontSymbol.BlackKnightOnBlackField, 'h')]//
+        [ChessFontMappings(ChessFontSymbol.BlackBishopOnBlackField, 'g')]//
+        [ChessFontMappings(ChessFontSymbol.BlackQueenOnBlackField, '1')]//
+        [ChessFontMappings(ChessFontSymbol.BlackKingOnBlackField, 'i')]//
+        [ChessFontMappings(ChessFontSymbol.BorderUpperLeftCorner, 'S')]//
+        [ChessFontMappings(ChessFontSymbol.BorderUpperEdge, '_')]//;
+        [ChessFontMappings(ChessFontSymbol.BorderUpperRightCorner, 'S')]//
+        [ChessFontMappings(ChessFontSymbol.BorderRightEdge, ']')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLowerRightCorner, 'S')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdge, '-')]//=
+        [ChessFontMappings(ChessFontSymbol.BorderLowerLeftCorner, 'S')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge, '[')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge1, 'Ú')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge2, 'Û')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge3, 'Ü')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge4, 'Ý')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge5, 'Þ')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge6, 'ß')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge7, 'à')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLeftEdge8, 'á')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeA, 'Á')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeB, 'Â')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeC, 'Ã')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeD, 'Ä')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeE, 'Å')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeF, 'Æ')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeG, 'Ç')]//
+        [ChessFontMappings(ChessFontSymbol.BorderLowerEdgeH, 'È')]//
+        Zurich = 3,
+    }
+}
