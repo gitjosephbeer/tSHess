@@ -1,0 +1,1 @@
+Validation: OK - no errors found in openings.txt

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.IO;
 using System.Windows.Forms;
 using tSHess.Engine;
 using tSHess.UI;
@@ -57,6 +58,34 @@ namespace tSHess
             s.GameOverEventHandler += new GameOverEventHandler(Program.OnGameOver);
 
             string openingBook = "openings.txt";
+
+            // CLI helper: validate openings file and exit
+            if (args != null && args.Length > 0 && args[0].ToLower() == "validate-openings")
+            {
+                OpeningBook ob = new OpeningBook();
+                string fileName = openingBook;
+                if (args.Length > 1 && !string.IsNullOrEmpty(args[1])) fileName = args[1];
+                var errors = ob.ValidateOpenings(fileName);
+                if (errors == null || errors.Count == 0)
+                {
+                    Console.WriteLine("Validation: OK - no errors found in " + fileName);
+                    File.WriteAllText("openings-validation-report.txt","Validation: OK - no errors found in " + fileName + Environment.NewLine);
+                }
+                else
+                {
+                    Console.WriteLine("Validation found " + errors.Count.ToString() + " error(s):");
+                    using (StreamWriter sw = new StreamWriter("openings-validation-report.txt",false))
+                    {
+                        sw.WriteLine("Validation found " + errors.Count.ToString() + " error(s):");
+                        foreach (var e in errors)
+                        {
+                            Console.WriteLine(e);
+                            sw.WriteLine(e);
+                        }
+                    }
+                }
+                return;
+            }
 
             Console.WriteLine("Welcom to tSHess!\n*****************\n\n");
             Console.WriteLine(s);

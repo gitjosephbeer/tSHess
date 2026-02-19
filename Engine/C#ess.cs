@@ -34,6 +34,7 @@
 using System;
 using System.Collections;
 using System.Collections.Specialized;
+using System.Collections.Generic;
 using System.IO;
 
 namespace tSHess.Engine
@@ -414,6 +415,99 @@ namespace tSHess.Engine
 			}
 
 			return true;
+		}
+
+		// Validate an openings file. Returns a list of error messages (empty if valid).
+		public List<string> ValidateOpenings(string fileName)
+		{
+			List<string> errors = new List<string>();
+			try
+			{
+				using (StreamReader sr = new StreamReader(fileName))
+				{
+					string line;
+					int lineNo = 0;
+					while ((line = sr.ReadLine()) != null)
+					{
+						lineNo++;
+						string original = line;
+						// same trimming/comment stripping as Load
+						line = line.Trim();
+						if (line.StartsWith("#"))
+						{
+							int j = 1;
+							while (j < line.Length && Char.IsDigit(line[j])) j++;
+							if (j > 1 && (j == line.Length || Char.IsWhiteSpace(line[j])))
+							{
+								line = line.Substring(j).TrimStart();
+							}
+						}
+						int idxHash = line.IndexOf('#');
+						int idxSemi = line.IndexOf(';');
+						int idxSlash = line.IndexOf("//", StringComparison.Ordinal);
+						int commentIdx = -1;
+						if (idxHash >= 0) commentIdx = idxHash;
+						if (idxSemi >= 0 && (commentIdx == -1 || idxSemi < commentIdx)) commentIdx = idxSemi;
+						if (idxSlash >= 0 && (commentIdx == -1 || idxSlash < commentIdx)) commentIdx = idxSlash;
+						if (commentIdx >= 0)
+							line = line.Substring(0, commentIdx).Trim();
+						if (line.Length == 0)
+							continue;
+						string[] tokens = line.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
+						SnapShot s = SnapShot.StartUpSnapShot();
+						// tokens should be pairs of ints
+						for (int i = 0; i < (int)(tokens.Length / 2); i++)
+						{
+							int from = 0;
+							int to = 0;
+							try
+							{
+								string sFrom = tokens[i*2];
+								sFrom = sFrom == null ? "" : sFrom.Trim();
+								string sTo = tokens[i*2+1];
+								sTo = sTo == null ? "" : sTo.Trim();
+								from = Int32.Parse(sFrom);
+								to = Int32.Parse(sTo);
+								Move m = new Move(from,to);
+								// capture board before attempting move for better diagnostics
+								string boardBefore = s.ToString();
+								string legalBefore = s.LegalMoves != null ? s.LegalMoves.ToString() : "";
+								// Validate by attempting the move on a clone; any invalid move will throw
+								try
+								{
+									s.Clone().PerformMove(m);
+								}
+								catch (Exception ex)
+								{
+									string msg = "Line " + lineNo.ToString() + ": invalid move '" + sFrom + " " + sTo + "' - " + ex.Message + " -- " + original.Trim() + Environment.NewLine;
+									msg += "Board before failure:" + Environment.NewLine + boardBefore + Environment.NewLine;
+									msg += "Legal moves before failure:" + Environment.NewLine + legalBefore + Environment.NewLine;
+									errors.Add(msg);
+									// stop validating this line further
+									break;
+								}
+								// move is valid for this position, now perform it on real snapshot
+								s.PerformMove(m);
+							}
+							catch (FormatException fex)
+							{
+								errors.Add("Line " + lineNo.ToString() + ": invalid token format - " + fex.Message + " -- " + original.Trim());
+								break;
+							}
+							catch (Exception ex)
+							{
+								errors.Add("Line " + lineNo.ToString() + ": unexpected error parsing moves - " + ex.Message + " -- " + original.Trim());
+								break;
+							}
+						}
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				errors.Add("Could not open/parse file: " + ex.Message);
+			}
+			return errors;
 		}
 
 		// private StoreMove( jcBoard, jcMov )
