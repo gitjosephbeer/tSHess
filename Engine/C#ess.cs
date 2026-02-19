@@ -417,6 +417,72 @@ namespace tSHess.Engine
 			return true;
 		}
 
+		// Validate SAN (Standard Algebraic Notation) openings file. Returns a list of error messages (empty if valid).
+		public List<string> ValidateSANOpenings(string fileName)
+		{
+			List<string> errors = new List<string>();
+			try
+			{
+				using (StreamReader sr = new StreamReader(fileName))
+				{
+					string line;
+					int lineNo = 0;
+					while ((line = sr.ReadLine()) != null)
+					{
+						lineNo++;
+						string original = line;
+						// same trimming/comment stripping as Load
+						line = line.Trim();
+						if (line.StartsWith("#"))
+						{
+							int j = 1;
+							while (j < line.Length && Char.IsDigit(line[j])) j++;
+							if (j > 1 && (j == line.Length || Char.IsWhiteSpace(line[j])))
+							{
+								line = line.Substring(j).TrimStart();
+							}
+						}
+						int idxHash = line.IndexOf('#');
+						int idxSemi = line.IndexOf(';');
+						int idxSlash = line.IndexOf("//", StringComparison.Ordinal);
+						int commentIdx = -1;
+						if (idxHash >= 0) commentIdx = idxHash;
+						if (idxSemi >= 0 && (commentIdx == -1 || idxSemi < commentIdx)) commentIdx = idxSemi;
+						if (idxSlash >= 0 && (commentIdx == -1 || idxSlash < commentIdx)) commentIdx = idxSlash;
+						if (commentIdx >= 0)
+							line = line.Substring(0, commentIdx).Trim();
+						if (line.Length == 0)
+							continue;
+						string[] tokens = line.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
+						SnapShot s = SnapShot.StartUpSnapShot();
+						for (int i = 0; i < tokens.Length; i++)
+						{
+							string sanMove = tokens[i];
+							try
+							{
+								Move m = s.SANToMove(sanMove);
+								s.PerformMove(m);
+							}
+							catch (Exception ex)
+							{
+								string msg = "Line " + lineNo.ToString() + ": invalid SAN move '" + sanMove + "' at position " + (i + 1).ToString() + " - " + ex.Message + Environment.NewLine;
+								msg += "Board before failure:" + Environment.NewLine + s.ToString() + Environment.NewLine;
+								msg += "Legal moves before failure:" + Environment.NewLine + s.LegalMoves.ToString() + Environment.NewLine;
+								msg += "Full line: " + original.Trim() + Environment.NewLine;
+								errors.Add(msg);
+								break;
+							}
+						}
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				errors.Add("Could not open/parse file: " + ex.Message);
+			}
+			return errors;
+		}
+
 		// Validate an openings file. Returns a list of error messages (empty if valid).
 		public List<string> ValidateOpenings(string fileName)
 		{
@@ -4491,6 +4557,335 @@ moveCounter--;
 				}
 			}
 		} // PerformMove
+
+		// Convert a Move to Standard Algebraic Notation (SAN) based on current board state
+		public string MoveToSAN(Move move)
+		{
+			if (move == null)
+				throw new ArgumentException("Move cannot be null");
+
+			// Handle castling
+			if (move.MoveCode == MoveCode.SmallCastling)
+				return "O-O";
+			if (move.MoveCode == MoveCode.BigCastling)
+				return "O-O-O";
+
+			int fromField = move.FieldNumberFrom;
+			int toField = move.FieldNumberTo;
+			PieceType pieceType = (PieceType)(situation[fromField] & 7);
+
+			string result = "";
+
+			// Add piece notation (except for pawns)
+			if (pieceType != PieceType.Pawn)
+			{
+				result += Helper.PieceType2ShortName(pieceType);
+
+				// Check if disambiguation is needed
+				int matchCount = 0;
+
+				foreach (Move m in legalMoves)
+				{
+					if (m.FieldNumberTo != toField)
+						continue;
+					if ((situation[m.FieldNumberFrom] & 7) != (int)pieceType)
+						continue;
+					matchCount++;
+				}
+
+				if (matchCount > 1)
+				{
+					HorizontalCoordinateCode fromFile = Helper.FieldNumber2HorizontalCoordinateCode(fromField);
+					VerticalCoordinateCode fromRank = Helper.FieldNumber2VerticalCoordinateCode(fromField);
+
+					// Check if different files can make the move
+					int sameFileMoves = 0;
+					foreach (Move m in legalMoves)
+					{
+						if (m.FieldNumberTo != toField)
+							continue;
+						if ((situation[m.FieldNumberFrom] & 7) != (int)pieceType)
+							continue;
+						if (Helper.FieldNumber2HorizontalCoordinateCode(m.FieldNumberFrom) == fromFile)
+							sameFileMoves++;
+					}
+
+					if (sameFileMoves == 1)
+					{
+						// Disambiguate by file
+						result += (char)(fromFile + 'a');
+					}
+					else
+					{
+						// Disambiguate by rank
+						result += (char)(fromRank + '1');
+					}
+				}
+			}
+			else
+			{
+				// For pawn captures, add the source file
+				if (move.MoveCode == MoveCode.HittingPiece || move.MoveCode == MoveCode.PromotePawnHittingPiece || move.MoveCode == MoveCode.EnPassant)
+				{
+					HorizontalCoordinateCode fromFile = Helper.FieldNumber2HorizontalCoordinateCode(fromField);
+					result += (char)(fromFile + 'a');
+				}
+			}
+
+			// Add capture indicator
+			if (move.MoveCode == MoveCode.HittingPiece || move.MoveCode == MoveCode.PromotePawnHittingPiece || move.MoveCode == MoveCode.EnPassant)
+				result += "x";
+
+			// Add destination square
+			result += Helper.FieldNumber2String(toField).ToLower();
+
+			// Add promotion (default to Queen if not specified)
+			if (move.MoveCode == MoveCode.PromotePawn || move.MoveCode == MoveCode.PromotePawnHittingPiece)
+			{
+				result += "=Q";
+			}
+
+			return result;
+		}
+
+		// Convert Standard Algebraic Notation (SAN) to a Move using current board state
+		// Examples: "e4", "Nf3", "Bxc4", "O-O", "e8=Q", "Nxe5+", etc.
+		public Move SANToMove(string san)
+		{
+			if (string.IsNullOrEmpty(san))
+				throw new ArgumentException("SAN string cannot be empty");
+
+			san = san.Trim();
+			
+			// Remove trailing check/checkmate indicators
+			while (san.Length > 0 && (san[san.Length - 1] == '+' || san[san.Length - 1] == '#'))
+				san = san.Substring(0, san.Length - 1);
+
+			// Handle castling
+			if (san == "O-O" || san == "0-0")
+			{
+				foreach (Move m in legalMoves)
+				{
+					if (m.MoveCode == MoveCode.SmallCastling)
+						return m;
+				}
+				throw new ArgumentException("Kingside castling not available");
+			}
+
+			if (san == "O-O-O" || san == "0-0-0")
+			{
+				foreach (Move m in legalMoves)
+				{
+					if (m.MoveCode == MoveCode.BigCastling)
+						return m;
+				}
+				throw new ArgumentException("Queenside castling not available");
+			}
+
+			// Parse regular moves
+			// Format: [Piece][disambiguation][x]DestSquare[=Promotion]
+			// Piece: K, Q, R, B, N (empty for pawn)
+			// disambiguation: optional file (a-h) or rank (1-8)
+			// x: capture indicator (optional)
+			// DestSquare: required, file (a-h) + rank (1-8)
+			// Promotion: =Q, =R, =B, =N (optional)
+
+			int idx = 0;
+			PieceType piecetype = PieceType.None;
+			char? disambiguationFile = null;
+			char? disambiguationRank = null;
+			bool isCapture = false;
+			string destSquare = "";
+			PromotionPieceType? promotion = null;
+
+			// Parse piece type (uppercase letters at position 0)
+			if (idx < san.Length && char.IsUpper(san[idx]))
+			{
+				switch (san[idx])
+				{
+					case 'K':
+						piecetype = PieceType.King;
+						idx++;
+						break;
+					case 'Q':
+						piecetype = PieceType.Queen;
+						idx++;
+						break;
+					case 'R':
+						piecetype = PieceType.Rook;
+						idx++;
+						break;
+					case 'B':
+						piecetype = PieceType.Bishop;
+						idx++;
+						break;
+					case 'N':
+						piecetype = PieceType.Knight;
+						idx++;
+						break;
+					default:
+						piecetype = PieceType.Pawn;
+						break;
+				}
+			}
+			else
+			{
+				piecetype = PieceType.Pawn;
+			}
+
+			// For pawn moves, special handling
+			if (piecetype == PieceType.Pawn)
+			{
+				// Check for pawn capture: file letter + 'x' + destination
+				if (idx < san.Length && san[idx] >= 'a' && san[idx] <= 'h' && 
+					idx + 1 < san.Length && san[idx + 1] == 'x')
+				{
+					disambiguationFile = san[idx];
+					idx += 2; // skip file and 'x'
+					isCapture = true;
+				}
+
+				// Parse destination (must be next 2 chars: file + rank)
+				if (idx + 1 < san.Length && san[idx] >= 'a' && san[idx] <= 'h' && san[idx + 1] >= '1' && san[idx + 1] <= '8')
+				{
+					destSquare = san.Substring(idx, 2);
+					idx += 2;
+				}
+				else
+				{
+					throw new ArgumentException("Invalid SAN: no destination square found");
+				}
+			}
+			else
+			{
+				// For piece moves, find the destination square working backwards
+				// Find promotion indicator if present
+				int promIdx = san.IndexOf('=');
+				int endIdx = (promIdx >= 0) ? promIdx : san.Length;
+
+				// Extract last 2 chars before promotion as destination (if they are file + rank)
+				if (endIdx >= 2 && san[endIdx - 2] >= 'a' && san[endIdx - 2] <= 'h' &&
+					san[endIdx - 1] >= '1' && san[endIdx - 1] <= '8')
+				{
+					destSquare = san.Substring(endIdx - 2, 2);
+				}
+				else
+				{
+					throw new ArgumentException("Invalid SAN: no valid destination square found");
+				}
+
+				// Check for 'x' before destination
+				int xIdx = san.IndexOf('x');
+				if (xIdx >= 0 && xIdx < endIdx - 2)
+				{
+					isCapture = true;
+					// disambiguation is between piece and 'x'
+					string between = san.Substring(idx, xIdx - idx);
+					ParseDisambiguation(between, out disambiguationFile, out disambiguationRank);
+				}
+				else if (xIdx < 0)
+				{
+					// No 'x', so everything between piece and destination is disambiguation
+					string between = san.Substring(idx, endIdx - 2 - idx);
+					ParseDisambiguation(between, out disambiguationFile, out disambiguationRank);
+				}
+			}
+
+			// Parse promotion
+			if (idx < san.Length && san[idx] == '=')
+			{
+				idx++;
+				if (idx < san.Length)
+				{
+					switch (san[idx])
+					{
+						case 'Q':
+							promotion = PromotionPieceType.Queen;
+							break;
+						case 'R':
+							promotion = PromotionPieceType.Rook;
+							break;
+						case 'B':
+							promotion = PromotionPieceType.Bishop;
+							break;
+						case 'N':
+							promotion = PromotionPieceType.Knight;
+							break;
+					}
+				}
+			}
+
+			// Find destination field number
+			int destFieldNumber = Helper.Coordinates2FieldNumber(
+				Helper.HChar2HorizontalCoordinateCode(char.ToUpper(destSquare[0])),
+				Helper.VChar2VerticalCoordinateCode(destSquare[1])
+			);
+
+			// Find matching move from legal moves
+			Move matchingMove = null;
+			int matchCount = 0;
+
+			foreach (Move m in legalMoves)
+			{
+				if (m.FieldNumberTo != destFieldNumber)
+					continue;
+
+				// Check piece type
+				PieceType movePieceType = (PieceType)(situation[m.FieldNumberFrom] & 7);
+				if (movePieceType != piecetype)
+					continue;
+
+				// Check capture flag
+				bool moveIsCapture = (m.MoveCode == MoveCode.HittingPiece || m.MoveCode == MoveCode.PromotePawnHittingPiece || m.MoveCode == MoveCode.EnPassant);
+				if (isCapture && !moveIsCapture)
+					continue;
+
+				// Check promotion
+				if (promotion.HasValue && m.MoveCode != MoveCode.PromotePawn && m.MoveCode != MoveCode.PromotePawnHittingPiece)
+					continue;
+				if (!promotion.HasValue && (m.MoveCode == MoveCode.PromotePawn || m.MoveCode == MoveCode.PromotePawnHittingPiece))
+					continue;
+
+				// Check disambiguation
+				if (disambiguationFile.HasValue)
+				{
+					HorizontalCoordinateCode fromFile = Helper.FieldNumber2HorizontalCoordinateCode(m.FieldNumberFrom);
+					if ((char)(fromFile + 'a') != disambiguationFile.Value)
+						continue;
+				}
+				if (disambiguationRank.HasValue)
+				{
+					VerticalCoordinateCode fromRank = Helper.FieldNumber2VerticalCoordinateCode(m.FieldNumberFrom);
+					if ((char)(fromRank + '1') != disambiguationRank.Value)
+						continue;
+				}
+
+				matchingMove = m;
+				matchCount++;
+			}
+
+			if (matchCount == 0)
+				throw new ArgumentException("No legal move matches SAN: " + san);
+			if (matchCount > 1)
+				throw new ArgumentException("Ambiguous SAN notation (multiple moves match, need disambiguation): " + san);
+
+			return matchingMove;
+		}
+
+		private void ParseDisambiguation(string between, out char? file, out char? rank)
+		{
+			file = null;
+			rank = null;
+
+			foreach (char c in between)
+			{
+				if (c >= 'a' && c <= 'h')
+					file = c;
+				else if (c >= '1' && c <= '8')
+					rank = c;
+			}
+		}
+
 
 /*
 		public Move GetBestMoveAlphaBeta(string openingBookFileName)
