@@ -1,21 +1,150 @@
-#01 d4 d5 c4 e6 Nf3 Nc6 # Queen's Gambit Declined
-#02 d4 d5 c4 e6 Nf3 Nc6 Qd3 # Queen's Gambit continuation
-#03 e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 Nf6 Nc3 e5 Ndb5 d6 Bg5 a6 # Sicilian - Sveshnikov
-#04 e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6 # Sicilian Defense
-#05 e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6 Be3 # Sicilian Dragon - Yugoslav Attack
-#06 e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 Ng3 Bg4 # Caro-Kann Defense
-#07 e4 e5 Nf3 Nc6 # Ruy Lopez - Berlin Defense
-#08 e4 e5 Nf3 Nc6 Bb5 a6 Ba4 # Ruy Lopez main line
-#09 e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Nxe4 d4 d6 # Ruy Lopez extended
-#10 e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Be7 c3 # Ruy Lopez variant
-#11 e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 # Ruy Lopez deep
-#12 e4 e5 Nf3 Nc6 Bc4 Bc5 b4 Bxb4 c3 Ba5 d4 # Italian - Evans Gambit
-#13 e4 e5 Nf3 Nc6 Bc4 Bc5 c3 Nf6 d4 exd4 cxd4 # Italian Game / Giuoco Piano
-#14 e4 e5 Nf3 Nc6 Bc4 h6 d4 d6 # Italian Game
-#15 e4 e6 d4 d5 Nc3 Bb4 e5 c5 a3 Bxc3 bxc3 Ne7 # French Defense - Winawer
-#16 c4 e5 Nf3 Nc6 d4 # English Opening
-#17 Nf3 d5 c4 c6 b3 # Reti Opening
-#18 b3 e5 Bb2 Nc6 Nf3 # Larsen's Opening
-#19 g3 e5 Nf3 d5 d3 # King's Indian Attack
-#20 f4 e5 Nf3 Nc6 d3 # Bird's Opening
-#21 e3 c5 Nc3 e5 Nf3 # Van't Kruijs Opening
+#01 d4 d5 c4 e6 Nf3 Nc6 # Queen's Gambit Declined - Main Line
+#02 d4 d5 c4 e6 Nf3 Nc6 Qd3 # Queen's Gambit Declined - Qd3 Variation
+#03 d4 d5 c4 dxc4 e3 # Queen's Gambit Accepted
+#04 d4 d5 c4 c6 Nf3 Nf6 Nc3 # Semi-Slav
+#05 d4 d5 c4 c6 Nf3 Nf6 Nc3 dxc4 # Slav Defense - Main Line
+#06 d4 d5 c4 c6 Nf3 Nf6 Nc3 e6 cxd5 cxd5 # Semi-Slav - Meran
+#07 d4 Nf6 c4 e6 Nf3 d5 Bg5 c6 # Queen's Gambit Declined - Closed
+#08 d4 Nf6 c4 e6 Nf3 d5 Nc3 Be7 Bg5 # Queen's Gambit - Main Variation
+#09 d4 Nf6 c4 e6 Nf3 d5 Bg5 Nbd7 # Queen's Gambit - Meran Defense
+#10 d4 Nf6 c4 e6 Nf3 d5 Nc3 dxc4 # Queen's Gambit Declined - Exchange
+#11 e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6 # Sicilian Najdorf
+#12 e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6 Qd2 # Sicilian Najdorf - 6.Qd2
+#13 e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6 Bg5 e6 f4 # Sicilian Najdorf - Main
+#14 e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 e5 Ndb5 a6 Bf4 Nbd7 # Sicilian Sveshnikov - Attack
+#15 e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 e5 Ndb5 a6 Be3 b5 # Sicilian - Sveshnikov Main
+#16 e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6 Be3 # Sicilian Dragon - Yugoslav Attack
+#17 e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6 Bg5 # Sicilian Dragon - Main Line
+#18 e4 c5 Nf3 e6 d4 cxd4 Nxd4 Nc6 Nc3 Qc7 # Sicilian Taimanov
+#19 e4 c5 Nf3 e6 d4 cxd4 Nxd4 Qb6 Nb3 Bb4 # Sicilian Rossolimo
+#20 e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 Nf6 Nc3 d6 Be3 Bg4 # Sicilian Positional
+#21 e4 c5 c3 d6 d4 cxd4 cxd4 Nf6 Nf3 Nc6 # Sicilian Alapin
+#22 e4 c5 c3 d5 exd5 Qxd5 d4 # Sicilian – Closed Variation
+#23 e4 c5 Nc3 d6 f3 Nf6 d4 cxd4 Qxd4 Nc6 Qd1 # Sicilian - Closed Variation
+#24 e4 c5 Nf3 e6 Nc3 a6 d4 cxd4 Nxd4 Qb6 # Sicilian - English Attack
+#25 e4 c6 d4 d5 Nc3 Nf6 exd5 cxd5 Nf3 Nc6 # Caro-Kann Defense - Main Line
+#26 e4 c6 d4 d5 Nc3 Nf6 Nf3 dxe4 Nxe4 Bf5 # Caro-Kann - Main Line (4.Nxe4)
+#27 e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5 Ng3 Bg4 # Caro-Kann - Classical
+#28 e4 c6 d4 d5 Nf3 dxe4 Nc3 # Caro-Kann - Slipless Variation
+#29 e4 c6 d4 d5 Nc3 Nf6 Nf3 Be6 Bg5 Nbd7 # Caro-Kann - Anti-Meran Variation
+#30 e4 c6 Nf3 d5 Nc3 Bg4 # Caro-Kann - Modern Defense
+#31 e4 e6 d4 d5 Nc3 Bb4 e5 c5 # French Defense - Winawer Variation
+#32 e4 e6 d4 d5 Nc3 Nf6 Bg5 Be7 exd5 Nxd5 # French - Classical Variation
+#33 e4 e6 d4 d5 Nc3 Nf6 exd5 exd5 Nf3 Nc6 # French - Exchange Variation
+#34 e4 e6 d4 d5 Nc3 Nf6 Bg5 Nbd7 # French - Defense Variation
+#35 e4 e6 d4 d5 Nf3 c5 exd5 Qxd5 Nc3 cxd4 # French - Tarrasch Variation
+#36 e4 e6 d4 d5 Nc3 Bb4 Nge2 # French - MacCutcheon Variation
+#37 e4 e6 d4 d5 Nc3 Be7 Nf3 Nf6 Bg5 # French - Closed Variation
+#38 e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 # Ruy Lopez - Open Variation
+#39 e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Nxe4 d4 # Ruy Lopez - Open Extended
+#40 e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 # Ruy Lopez - Main Line
+#41 e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 d6 # Ruy Lopez - Delayed
+#42 e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Nxe4 d4 Be7 dxe5 # Ruy Lopez - Closed
+#43 e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Be7 c3 # Ruy Lopez - Deferred
+#44 e4 e5 Nf3 Nc6 Bb5 Nd4 Ba4 Nf6 O-O # Ruy Lopez - Berlin Defense
+#45 e4 e5 Nf3 Nc6 Bb5 d6 d4 Bg4 # Ruy Lopez - Steinitz Defense
+#46 e4 e5 Nf3 Nc6 Bc4 Bc5 # Italian - Giuoco Piano
+#47 e4 e5 Nf3 Nc6 Bc4 Bc5 d3 Nf6 O-O d6 # Italian - Slow Giuoco
+#48 e4 e5 Nf3 Nc6 Bc4 Bc5 b4 Bxb4 c3 # Italian - Evans Gambit
+#49 e4 e5 Nf3 Nc6 Bc4 Bc5 c3 Nf6 d4 exd4 # Italian - Two Knights
+#50 e4 e5 Nf3 Nc6 Bc4 Bc5 # Italian - Main Classical
+#51 e4 e5 Nf3 Nf6 Bc4 Bc5 # Italian - Standard
+#52 e4 e5 Nf3 Nf6 Bc4 Nxe4 d4 # Italian - Two Knights Defense
+#53 e4 e5 Nf3 Nf6 d4 # Scotch Opening
+#54 e4 e5 Nf3 Nf6 d4 exd4 e5 # Scotch - Aggressive
+#55 e4 e5 Nf3 Nf6 d4 exd4 Nxd4 # Scotch - Solid
+#56 e4 e5 Nf3 Nf6 d4 exd4 Nxd4 Nc6 # Scotch Game - Main
+#57 e4 e5 Nf3 d6 d4 f6 # Fried Liver Attack
+#58 e4 e5 Nf3 d6 d4 exd4 Qxd4 # Center Game
+#59 e4 e5 Na3 # Irregular Opening
+#60 e4 e5 Nc3 Nc6 Bc4 # Three Knights Opening
+#61 e4 e5 Nc3 Nc6 f4 # King's Gambit
+#62 e4 e5 Nc3 Nf6 g3 # Closed Variation
+#63 c4 e5 Nf3 Nc6 # English Opening - Main Line
+#64 c4 e5 Nf3 f6 d4 # English - Aggressive
+#65 c4 e5 g3 Nf6 Bg2 # English - Hypermodern
+#66 c4 c5 Nf3 # English Opening - Symmetrical
+#67 Nf3 d5 c4 c6 # Reti Opening - Semi-Slav
+#68 Nf3 d5 c4 e6 # Reti Opening - Main Chain
+#69 Nf3 d5 c4 e6 g3 Be7 Bg2 c6 O-O Nbd7 # Reti Opening - Closed Variation
+#70 Nf3 d5 d4 # Semi-Closed Game
+#71 d4 Nf6 Nf3 # Zukertort Opening
+#72 d4 Nf6 Nf3 d5 c4 e6 g3 # Reti - Fianchetto Variation
+#73 b3 e5 Bb2 Nc6 f3 # Larsen's Opening - Main
+#74 g3 d5 Bg2 c6 Nf3 Nf6 # Fianchetto Opening
+#75 f4 e5 fxe5 d6 # Bird's Opening - Main Line
+#76 f4 e5 Nf3 d6 # Bird's Opening - Aggressive
+#77 e3 c5 f4 Nc6 Nf3 # Van't Kruijs - Aggressive
+#78 d4 Nf6 Nf3 g6 c4 # King's Indian Defense - Main
+#79 d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O # King's Indian Defense - Classical
+#80 d4 Nf6 c4 g6 Nc3 Bg7 Nf3 O-O Be3 e5 # King's Indian - Fianchetto
+#81 d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Bg5 # King's Indian - Orthodox
+#82 d4 Nf6 c4 g6 Bg5 # King's Indian - 4 Bg5
+#83 d4 Nf6 c4 g6 Nf3 Bg7 g3 O-O # King's Indian - Modern
+#84 d4 Nf6 c4 g6 Nc3 Bg7 Nf3 d6 Be3 c6 # King's Indian - Classical Fianchetto
+#85 d4 Nf6 Bg5 # Warsaw Variation
+#86 d4 Nf6 c4 d6 # Grünfeld Defense - Hypermodern
+#87 d4 Nf6 c4 d6 Nc3 Bg4 # Grünfeld - Main Line
+#88 d4 Nf6 c4 d6 Nf3 Bg4 # Grünfeld Hypermodern Variation
+#89 d4 Nf6 c4 d6 Nf3 c5 # Grünfeld - Flexible
+#90 d4 Nf6 c4 d6 Nc3 Nbd7 Nf3 e5 # Grünfeld - Positional
+#91 d4 f5 c4 # Dutch Defense
+#92 d4 f5 c4 e6 # Dutch - Stonewall Variation
+#93 d4 f5 Nf3 Nf6 c4 e6 Nc3 # Dutch Defense - Main
+#94 d4 f5 Nf3 e6 Nc3 Nf6 Bg5 # Dutch - Classical Variation
+#95 d4 f5 g3 Nf6 Bg2 # Dutch - Fianchetto
+#96 d4 Nc6 c4 e6 # Nimzo-Indian Defense
+#97 d4 Nc6 c4 e6 Nc3 Bb4 # Nimzo-Indian - Main Line
+#98 d4 Nc6 c4 e6 Nc3 Bb4 Qd3 d5 cxd5 exd5 # Nimzo-Indian - Positional
+#99 d4 Nc6 c4 e6 Nc3 Bb4 Bd2 d5 cxd5 exd5 # Nimzo-Indian - Kasparov Variation
+#100 d4 Nc6 c4 e6 Nc3 Bb4 Nf3 d5 # Nimzo-Indian - Flexible
+#101 d4 e6 Nf3 Nf6 c4 d5 # Closed Semi-Slav
+#102 d4 e6 Nf3 d5 c4 dxc4 # Slav Defense
+#103 d4 e6 Nf3 d5 c4 c6 # Closed Semi-Slav - Meran
+#104 d4 e6 c4 d5 cxd5 exd5 # Closed Game - Symmetrical
+#105 Nf3 c5 d4 cxd4 Nxd4 e6 # English Attack - c5 Variation
+#106 Nf3 c5 g3 Nc6 Bg2 # English - Fianchetto System
+#107 Nf3 c5 g3 d6 Bg2 Nc6 # English Hypermodern
+#108 Nf3 c5 Nc3 e6 d4 cxd4 # English - d-file Attack
+#109 e4 d5 exd5 # Scandinavian - Main
+#110 e4 d5 exd5 Qxd5 Nc3 Qa5 # Scandinavian Defense
+#111 e4 d5 exd5 Qxd5 Nc3 Qa5 d4 # Scandinavian Main Variation
+#112 e4 d5 exd5 Nf6 # Scandinavian - Center
+#113 e4 a6 # St. George's Defense
+#114 e4 b5 # Sokolsky Opening
+#115 e4 b6 # Ware Opening
+#116 Nf3 c5 g3 d6 Bg2 Nf6 O-O # Dunst Opening
+#117 d4 a6 # Meadow Hay Opening
+#118 Nf3 e6 # Reti Opening - Quiet
+#119 Nf3 e5 d4 # Reti - d4 Promotion
+#120 Nf3 e5 d3 # Reti - Positional System
+#121 Nf3 g6 g3 Bg7 Bg2 # Modern Defense - Hypermodern
+#122 Nf3 c6 d4 d5 c4 dxc4 # Semi-Slav - Modern
+#123 c4 Nf6 d4 e6 Nc3 d5 # Closed Game - Queen's Side
+#124 c4 Nf6 Nc3 e6 # Closed Game - Flexible
+#125 c4 Nf6 Nf3 e6 Nc3 d5 cxd5 exd5 # Closed - d5 Exchange
+#126 c4 Nf6 g3 e6 Bg2 d5 cxd5 exd5 # English - Fianchetto d5
+#127 d4 e5 dxe5 # Scandinavian-like Variation
+#128 d4 e5 dxe5 Nf6 Nc3 d6 exd6 Bxd6 # Scandinavian - d5 Exchange Variation
+#129 e4 a5 # Ware - Irregular
+#130 Nf3 a5 d4 d5 c4 c6 # Reti - with a5
+#131 c4 Nf6 d4 c5 d5 e6 # English - Reversed Sicilian
+#132 c4 c5 d4 cxd4 Nf3 # English - Closed Sicilian Variation
+#133 Nf3 c5 d4 cxd4 c3 dxc3 # English - Closed Sicilian
+#134 d4 c5 d5 Nf6 c4 e6 Nc3 exd5 # Closed - Sicilian System
+#135 e4 e5 Nf3 Nc6 d4 exd4 Nxd4 Bc5 # Italian-Scotch Hybrid
+#136 e4 e5 Nf3 Nc6 Nc3 # Three Knights Game
+#137 e4 e5 Nf3 Nc6 Nc3 Bc5 # Three Knights Aggressive
+#138 e4 e5 Nf3 Bc5 d4 # Center Game - Italian
+#139 d4 e6 c4 f5 # Stonewall Dutch
+#140 d4 e6 c4 f5 Nc3 Nf6 Bg5 Be7 e3 # Stonewall Exchange Variation
+#141 d4 Nf6 c4 e6 Nf3 Be7 Bg5 Ne4 # King's Indian Modern
+#142 d4 Nf6 c4 e6 Nf3 d5 Bg5 Nbd7 # King's Indian - Orthodox Defense
+#143 d4 Nf6 c4 e6 Nf3 d5 Bg5 Ne4 # King's Indian Modern Aggressive
+#144 d4 Nf6 c4 e6 Nf3 d5 Bg5 h6 # King's Indian Defensive Variation
+#145 e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 Nbd7 Bg5 # Sicilian Most Popular
+#146 e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 Nf6 Nc3 d6 Bg5 # Sicilian Positional Main
+#147 d4 d5 c4 e6 Bg5 Nf6 Nf3 Ne4 # Queen's Gambit Modern
+#148 d4 d5 c4 c6 Nc3 Nf6 Bg5 dxc4 # Semi-Slav Positive Variation
+#149 e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 g6 # Sicilian Dragon Fianchetto
+#150 Nf3 d5 c4 dxc4 e3 Nf6 Bxc4 e6 O-O # Reti Opening - Functional

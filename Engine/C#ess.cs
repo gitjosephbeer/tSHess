@@ -782,6 +782,11 @@ namespace tSHess.Engine
 		public int Evaluation;
 		public EvaluationType EvaluationType;
 		public int SearchDepth;
+		
+		// For pawn promotion moves, stores which piece type the pawn should promote to
+		// If null, the event handler will be called to let user choose
+		// If set, this specific piece type will be used (for SAN-based moves)
+		public PromotionPieceType? PromotionPieceType = null;
 
 		public override bool Equals(object o)
 		{
@@ -830,6 +835,7 @@ namespace tSHess.Engine
 			m.Evaluation = this.Evaluation;
 			m.EvaluationType = this.EvaluationType;
 			m.SearchDepth = this.SearchDepth;
+			m.PromotionPieceType = this.PromotionPieceType;
 			return m;
 		}
 
@@ -4323,8 +4329,16 @@ moveCounter--;
 				case MoveCode.PromotePawn:
 					{
 						PromotePawnEventArgs ea = new PromotePawnEventArgs();
-						if (!internalUsage && PromotePawnEventHandler != null)
+						// If promotion piece was specified in the move (e.g., from SAN notation), use it
+						// Otherwise, let the event handler decide (for interactive UI)
+						if (origMove.PromotionPieceType.HasValue)
+						{
+							ea.PromoteTo = origMove.PromotionPieceType.Value;
+						}
+						else if (!internalUsage && PromotePawnEventHandler != null)
+						{
 							PromotePawnEventHandler(this,ea);
+						}
 						byte newPiece = (byte)((PieceType)ea.PromoteTo);
 						newPiece = (byte)(newPiece | color | 16 | 32);
 						situation[fTo] = newPiece;
@@ -4344,8 +4358,16 @@ moveCounter--;
 				case MoveCode.PromotePawnHittingPiece:
 					{
 						PromotePawnEventArgs ea = new PromotePawnEventArgs();
-						if (!internalUsage && PromotePawnEventHandler != null)
+						// If promotion piece was specified in the move (e.g., from SAN notation), use it
+						// Otherwise, let the event handler decide (for interactive UI)
+						if (origMove.PromotionPieceType.HasValue)
+						{
+							ea.PromoteTo = origMove.PromotionPieceType.Value;
+						}
+						else if (!internalUsage && PromotePawnEventHandler != null)
+						{
 							PromotePawnEventHandler(this,ea);
+						}
 						byte newPiece = (byte)((PieceType)ea.PromoteTo);
 						newPiece = (byte)(newPiece| color | 16 | 32);
 						situation[fTo] = newPiece;
@@ -4868,6 +4890,12 @@ moveCounter--;
 				throw new ArgumentException("No legal move matches SAN: " + san);
 			if (matchCount > 1)
 				throw new ArgumentException("Ambiguous SAN notation (multiple moves match, need disambiguation): " + san);
+
+			// If promotion was specified in SAN, set it on the move
+			if (promotion.HasValue)
+			{
+				matchingMove.PromotionPieceType = promotion.Value;
+			}
 
 			return matchingMove;
 		}

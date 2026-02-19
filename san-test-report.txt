@@ -1,0 +1,310 @@
+========================================
+COMPREHENSIVE SAN PARSING TEST SUITE
+========================================
+
+TEST 1: Sicilian Najdorf (12 moves - standard opening)
+  ✓ e4
+  ✓ c5
+  ✓ Nf3
+  ✓ d6
+  ✓ d4
+  ✓ cxd4
+  ✓ Nxd4
+  ✓ Nf6
+  ✓ Nc3
+  ✓ a6
+  ✓ g3
+  ✓ e5
+  Result: 12/12 moves parsed correctly
+
+TEST 2: Ruy Lopez with Castling (14 moves)
+  ✓ e4
+  ✓ e5
+  ✓ Nf3
+  ✓ Nc6
+  ✓ Bb5
+  ✓ a6
+  ✓ Ba4
+  ✓ Nf6
+  ✓ O-O
+  ✓ Be7
+  ✓ Re1
+  ✓ b5
+  ✓ Bb3
+  ✓ d6
+  Result: 14/14 moves parsed correctly
+
+TEST 3: Queen's Gambit (10 moves - standard)
+  ✓ d4
+  ✓ d5
+  ✓ c4
+  ✓ e6
+  ✓ Nf3
+  ✓ Nf6
+  ✓ Bg5
+  ✓ Be7
+  ✓ e3
+  ✓ O-O
+  Result: 10/10 moves parsed correctly
+
+TEST 4: Knight Disambiguation (complex piece moves)
+  ✓ Nf3
+  ✓ Nf6
+  ✓ Nc3
+  ✓ Nc6
+  ✓ d4
+  ✓ d5
+  ✓ Nxd5
+  ✓ Nxd5
+  ✗ Qxd5 - ERROR: No legal move matches SAN: Qxd5
+    Board state:
+         A    B    C    D    E    F    G    H  
+        _______________________________________ 
+       |    |    |    |    |    |    |    |    |
+     8 | bR |    | bB | bQ | bK | bB |    | bR | 8
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     7 | b  | b  | b  |    | b  | b  | b  | b  | 7
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     6 |    |    | bN |    |    |    |    |    | 6
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     5 |    |    |    | bN |    |    |    |    | 5
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     4 |    |    |    | w  |    |    |    |    | 4
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     3 |    |    |    |    |    | wN |    |    | 3
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     2 | w  | w  | w  |    | w  | w  | w  | w  | 2
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     1 | wR |    | wB | wQ | wK | wB |    | wR | 1
+       |____|____|____|____|____|____|____|____|
+    
+         A    B    C    D    E    F    G    H  
+    
+    Last move done: F6-D5
+    
+    White to move now...
+    
+    Legal moves:
+    A1-B1;A2-A4;A2-A3;B2-B4;B2-B3;C1-D2;C1-E3;C1-F4;C1-G5;C1-H6;
+    C2-C4;C2-C3;D1-D2;D1-D3;E1-D2;E2-E4;E2-E3;F3-G5;F3-E5;F3-G1;
+    F3-H4;F3-D2;G2-G4;G2-G3;H1-G1;H2-H4;H2-H3
+    Legal moves: A1-B1;A2-A4;A2-A3;B2-B4;B2-B3;C1-D2;C1-E3;C1-F4;C1-G5;C1-H6;
+C2-C4;C2-C3;D1-D2;D1-D3;E1-D2;E2-E4;E2-E3;F3-G5;F3-E5;F3-G1;
+F3-H4;F3-D2;G2-G4;G2-G3;H1-G1;H2-H4;H2-H3
+  Result: 8/9 moves parsed correctly
+
+TEST 5: Multiple Captures and Piece Interactions
+  ✓ e4
+  ✓ c5
+  ✓ Nf3
+  ✓ Nc6
+  ✓ d4
+  ✓ cxd4
+  ✓ Nxd4
+  ✓ e5
+  ✓ Nxc6
+  ✓ bxc6
+  ✓ Nc3
+  ✓ Nf6
+  Result: 12/12 moves parsed correctly
+
+TEST 6: Pawn Advancement Toward Promotion (20 moves - deep game)
+  ✓ e4
+  ✓ c5
+  ✓ Nf3
+  ✓ d6
+  ✓ d4
+  ✓ cxd4
+  ✓ Nxd4
+  ✓ Nf6
+  ✓ Nc3
+  ✓ a6
+  ✓ Be3
+  ✓ e5
+  ✓ Nf3
+  ✓ Be7
+  ✗ f4 - ERROR: No legal move matches SAN: f4
+    Board state:
+         A    B    C    D    E    F    G    H  
+        _______________________________________ 
+       |    |    |    |    |    |    |    |    |
+     8 | bR | bN | bB | bQ | bK |    |    | bR | 8
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     7 |    | b  |    |    | bB | b  | b  | b  | 7
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     6 | b  |    |    | b  |    | bN |    |    | 6
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     5 |    |    |    |    | b  |    |    |    | 5
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     4 |    |    |    |    | w  |    |    |    | 4
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     3 |    |    | wN |    | wB | wN |    |    | 3
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     2 | w  | w  | w  |    |    | w  | w  | w  | 2
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     1 | wR |    |    | wQ | wK | wB |    | wR | 1
+       |____|____|____|____|____|____|____|____|
+    
+         A    B    C    D    E    F    G    H  
+    
+    Last move done: F8-E7
+    
+    White to move now...
+    
+    Legal moves:
+    A1-B1;A1-C1;A2-A4;A2-A3;B2-B4;B2-B3;C3-B1;C3-D5;C3-B5;C3-A4;
+    C3-E2;D1-E2;D1-D2;D1-D3;D1-D4;D1-D5;D1-D6;D1-C1;D1-B1;E1-E2;
+    E1-D2;E3-F4;E3-G5;E3-H6;E3-D2;E3-C1;E3-D4;E3-C5;E3-B6;E3-A7;
+    F1-E2;F1-D3;F1-C4;F1-B5;F1-A6;F3-G5;F3-E5;F3-G1;F3-D4;F3-H4;
+    F3-D2;G2-G4;G2-G3;H1-G1;H2-H4;H2-H3
+    Legal moves: A1-B1;A1-C1;A2-A4;A2-A3;B2-B4;B2-B3;C3-B1;C3-D5;C3-B5;C3-A4;
+C3-E2;D1-E2;D1-D2;D1-D3;D1-D4;D1-D5;D1-D6;D1-C1;D1-B1;E1-E2;
+E1-D2;E3-F4;E3-G5;E3-H6;E3-D2;E3-C1;E3-D4;E3-C5;E3-B6;E3-A7;
+F1-E2;F1-D3;F1-C4;F1-B5;F1-A6;F3-G5;F3-E5;F3-G1;F3-D4;F3-H4;
+F3-D2;G2-G4;G2-G3;H1-G1;H2-H4;H2-H3
+  Result: 14/20 moves parsed correctly
+
+TEST 7: Queenside Castling (O-O-O)
+  ✓ d4
+  ✓ d5
+  ✓ Nf3
+  ✓ Nf6
+  ✓ c4
+  ✓ e6
+  ✓ Bg5
+  ✓ Be7
+  ✓ e3
+  ✓ O-O
+  ✓ Nc3
+  ✓ Nbd7
+  ✓ Rc1
+  ✓ c6
+  Result: 14/14 moves parsed correctly
+
+TEST 8: Rook File Disambiguation and Complex Movement
+  ✓ a4
+  ✓ a5
+  ✓ Ra3
+  ✓ e6
+  ✓ Rh3
+  ✓ Ke7
+  ✓ Rg3
+  ✓ Kd6
+  ✓ Rf3
+  ✓ Kc5
+  Result: 10/10 moves parsed correctly
+
+TEST 9: En Passant Capture Setup
+  ✓ e4
+  ✓ a6
+  ✓ e5
+  ✓ d5
+  ✓ exd6
+  Result: 5/5 moves parsed correctly
+
+TEST 10: Advanced Pawn with Promotion Opportunity
+  ✓ a4
+  ✓ b5
+  ✓ axb5
+  ✓ a6
+  ✓ bxa6
+  ✓ Nf6
+  ✓ a7
+  ✓ d5
+  ✗ a8=Q - ERROR: No legal move matches SAN: a8=Q
+    Board state:
+         A    B    C    D    E    F    G    H  
+        _______________________________________ 
+       |    |    |    |    |    |    |    |    |
+     8 | bR | bN | bB | bQ | bK | bB |    | bR | 8
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     7 | w  |    | b  |    | b  | b  | b  | b  | 7
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     6 |    |    |    |    |    | bN |    |    | 6
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     5 |    |    |    | b  |    |    |    |    | 5
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     4 |    |    |    |    |    |    |    |    | 4
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     3 |    |    |    |    |    |    |    |    | 3
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     2 |    | w  | w  | w  | w  | w  | w  | w  | 2
+       |____|____|____|____|____|____|____|____|
+       |    |    |    |    |    |    |    |    |
+     1 | wR | wN | wB | wQ | wK | wB | wN | wR | 1
+       |____|____|____|____|____|____|____|____|
+    
+         A    B    C    D    E    F    G    H  
+    
+    Last move done: D7-D5
+    
+    White to move now...
+    
+    Legal moves:
+    A1-A2;A1-A3;A1-A4;A1-A5;A1-A6;A7-B8;B1-C3;B1-A3;B2-B4;B2-B3;
+    C2-C4;C2-C3;D2-D4;D2-D3;E2-E4;E2-E3;F2-F4;F2-F3;G1-H3;G1-F3;
+    G2-G4;G2-G3;H2-H4;H2-H3
+    Legal moves: A1-A2;A1-A3;A1-A4;A1-A5;A1-A6;A7-B8;B1-C3;B1-A3;B2-B4;B2-B3;
+C2-C4;C2-C3;D2-D4;D2-D3;E2-E4;E2-E3;F2-F4;F2-F3;G1-H3;G1-F3;
+G2-G4;G2-G3;H2-H4;H2-H3
+  Result: 8/9 moves parsed correctly
+
+TEST 11: Endgame with Mixed Piece Captures
+  ✓ e4
+  ✓ c5
+  ✓ Nf3
+  ✓ d6
+  ✓ d4
+  ✓ cxd4
+  ✓ Nxd4
+  ✓ Nf6
+  ✓ Nc3
+  ✓ a6
+  ✓ Bg5
+  ✓ e6
+  ✓ f4
+  ✓ Be7
+  ✓ Qf3
+  ✓ Nbd7
+  Result: 16/16 moves parsed correctly
+
+TEST 12: Bishop Moves and Complex Piece Interactions
+  ✓ d4
+  ✓ d5
+  ✓ Bf4
+  ✓ Nf6
+  ✓ Nf3
+  ✓ c6
+  ✓ c3
+  ✓ Bf5
+  ✓ Nbd2
+  ✓ Nbd7
+  ✓ e3
+  ✓ e6
+  ✓ Bd3
+  ✓ Bxd3
+  Result: 14/14 moves parsed correctly
+
+========================================
+TEST SUITE COMPLETED
+========================================

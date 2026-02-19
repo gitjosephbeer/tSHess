@@ -115,6 +115,146 @@ namespace tSHess
                 return;
             }
 
+            // CLI helper: test SAN parsing logic
+            if (args != null && args.Length > 0 && args[0].ToLower() == "test-san")
+            {
+                using (StreamWriter sw = new StreamWriter("san-test-report.txt", false))
+                {
+                    sw.WriteLine("========================================");
+                    sw.WriteLine("COMPREHENSIVE SAN PARSING TEST SUITE");
+                    sw.WriteLine("========================================");
+                    sw.WriteLine();
+                    
+                    // Test 1: Standard openings
+                    sw.WriteLine("TEST 1: Sicilian Najdorf (12 moves - standard opening)");
+                    SnapShot snapshot = SnapShot.StartUpSnapShot();
+                    string[] test1 = { "e4", "c5", "Nf3", "d6", "d4", "cxd4", "Nxd4", "Nf6", "Nc3", "a6", "g3", "e5" };
+                    RunSANTest(sw, snapshot, test1);
+                    
+                    // Test 2: Ruy Lopez with castling
+                    sw.WriteLine();
+                    sw.WriteLine("TEST 2: Ruy Lopez with Castling (14 moves)");
+                    snapshot = SnapShot.StartUpSnapShot();
+                    string[] test2 = { "e4", "e5", "Nf3", "Nc6", "Bb5", "a6", "Ba4", "Nf6", "O-O", "Be7", "Re1", "b5", "Bb3", "d6" };
+                    RunSANTest(sw, snapshot, test2);
+                    
+                    // Test 3: Queen's Gambit
+                    sw.WriteLine();
+                    sw.WriteLine("TEST 3: Queen's Gambit (10 moves - standard)");
+                    snapshot = SnapShot.StartUpSnapShot();
+                    string[] test3 = { "d4", "d5", "c4", "e6", "Nf3", "Nf6", "Bg5", "Be7", "e3", "O-O" };
+                    RunSANTest(sw, snapshot, test3);
+                    
+                    // Test 4: Knight disambiguation (multiple knights can move to same square)
+                    sw.WriteLine();
+                    sw.WriteLine("TEST 4: Knight Disambiguation (complex piece moves)");
+                    snapshot = SnapShot.StartUpSnapShot();
+                    string[] test4 = { "Nf3", "Nf6", "Nc3", "Nc6", "d4", "d5", "Nxd5", "Nxd5", "Qxd5" };
+                    RunSANTest(sw, snapshot, test4);
+                    
+                    // Test 5: Complex captures and piece interactions
+                    sw.WriteLine();
+                    sw.WriteLine("TEST 5: Multiple Captures and Piece Interactions");
+                    snapshot = SnapShot.StartUpSnapShot();
+                    string[] test5 = { "e4", "c5", "Nf3", "Nc6", "d4", "cxd4", "Nxd4", "e5", "Nxc6", "bxc6", "Nc3", "Nf6" };
+                    RunSANTest(sw, snapshot, test5);
+                    
+                    // Test 6: Pawn advancement toward promotion (long game)
+                    sw.WriteLine();
+                    sw.WriteLine("TEST 6: Pawn Advancement Toward Promotion (20 moves - deep game)");
+                    snapshot = SnapShot.StartUpSnapShot();
+                    string[] test6 = {
+                        "e4", "c5", "Nf3", "d6", "d4", "cxd4", "Nxd4", "Nf6", "Nc3", "a6",
+                        "Be3", "e5", "Nf3", "Be7", "f4", "O-O", "Qd2", "Nbd7", "O-O-O", "b5"
+                    };
+                    RunSANTest(sw, snapshot, test6);
+                    
+                    // Test 7: Queenside castling
+                    sw.WriteLine();
+                    sw.WriteLine("TEST 7: Queenside Castling (O-O-O)");
+                    snapshot = SnapShot.StartUpSnapShot();
+                    string[] test7 = { "d4", "d5", "Nf3", "Nf6", "c4", "e6", "Bg5", "Be7", "e3", "O-O", "Nc3", "Nbd7", "Rc1", "c6" };
+                    RunSANTest(sw, snapshot, test7);
+                    
+                    // Test 8: File disambiguation (rooks on same file)
+                    sw.WriteLine();
+                    sw.WriteLine("TEST 8: Rook File Disambiguation and Complex Movement");
+                    snapshot = SnapShot.StartUpSnapShot();
+                    string[] test8 = { "a4", "a5", "Ra3", "e6", "Rh3", "Ke7", "Rg3", "Kd6", "Rf3", "Kc5" };
+                    RunSANTest(sw, snapshot, test8);
+                    
+                    // Test 9: En Passant capture (if possible in the game)
+                    sw.WriteLine();
+                    sw.WriteLine("TEST 9: En Passant Capture Setup");
+                    snapshot = SnapShot.StartUpSnapShot();
+                    string[] test9 = {
+                        "e4", "a6", "e5", "d5", "exd6"  // exd6 is the en passant capture
+                    };
+                    RunSANTest(sw, snapshot, test9);
+                    
+                    // Test 10: Pawn promotion attempted (long endgame scenario)
+                    sw.WriteLine();
+                    sw.WriteLine("TEST 10: Advanced Pawn with Promotion Opportunity");
+                    snapshot = SnapShot.StartUpSnapShot();
+                    string[] test10 = {
+                        "a4", "b5", "axb5", "a6", "bxa6", "Nf6", "a7", "d5", "a8=Q"  // a8=Q is pawn promotion to Queen
+                    };
+                    RunSANTest(sw, snapshot, test10);
+                    
+                    // Test 11: Complex endgame with multiple piece types
+                    sw.WriteLine();
+                    sw.WriteLine("TEST 11: Endgame with Mixed Piece Captures");
+                    snapshot = SnapShot.StartUpSnapShot();
+                    string[] test11 = {
+                        "e4", "c5", "Nf3", "d6", "d4", "cxd4", "Nxd4", "Nf6", 
+                        "Nc3", "a6", "Bg5", "e6", "f4", "Be7", "Qf3", "Nbd7"
+                    };
+                    RunSANTest(sw, snapshot, test11);
+                    
+                    // Test 12: Bishop moves with disambiguation
+                    sw.WriteLine();
+                    sw.WriteLine("TEST 12: Bishop Moves and Complex Piece Interactions");
+                    snapshot = SnapShot.StartUpSnapShot();
+                    string[] test12 = {
+                        "d4", "d5", "Bf4", "Nf6", "Nf3", "c6", "c3", "Bf5", 
+                        "Nbd2", "Nbd7", "e3", "e6", "Bd3", "Bxd3"
+                    };
+                    RunSANTest(sw, snapshot, test12);
+                    
+                    sw.WriteLine();
+                    sw.WriteLine("========================================");
+                    sw.WriteLine("TEST SUITE COMPLETED");
+                    sw.WriteLine("========================================");
+                }
+                Console.WriteLine("Comprehensive SAN test completed - see san-test-report.txt");
+                return;
+            }
+
+            static void RunSANTest(StreamWriter sw, SnapShot snapshot, string[] moves)
+            {
+                int successCount = 0;
+                foreach (string san in moves)
+                {
+                    try
+                    {
+                        Move move = snapshot.SANToMove(san);
+                        sw.WriteLine($"  ✓ {san}");
+                        snapshot.PerformMove(move);
+                        successCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        sw.WriteLine($"  ✗ {san} - ERROR: {ex.Message}");
+                        // Show board state for debugging
+                        sw.WriteLine($"    Board state:");
+                        sw.WriteLine($"    {snapshot.ToString().Replace(Environment.NewLine, Environment.NewLine + "    ")}");
+                        sw.WriteLine($"    Legal moves: {snapshot.LegalMoves.ToString()}");
+                        break;
+                    }
+                }
+                sw.WriteLine($"  Result: {successCount}/{moves.Length} moves parsed correctly");
+            }
+
             // CLI helper: convert openings to SAN notation
             if (args != null && args.Length > 0 && args[0].ToLower() == "convert-openings-to-san")
             {
