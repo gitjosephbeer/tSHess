@@ -1,0 +1,62 @@
+========================================
+SAN ROUNDTRIP CONSISTENCY TEST SUITE
+========================================
+
+SCENARIO 1: Sicilian
+  start position: 20 legal moves checked, errors: 0
+  after e4: 20 legal moves checked, errors: 0
+  after c5: 30 legal moves checked, errors: 0
+  after Nf3: 22 legal moves checked, errors: 0
+  after d6: 28 legal moves checked, errors: 0
+  after d4: 30 legal moves checked, errors: 0
+  after cxd4: 37 legal moves checked, errors: 0
+  after Nxd4: 28 legal moves checked, errors: 0
+  after Nf6: 42 legal moves checked, errors: 0
+  after Nc3: 31 legal moves checked, errors: 0
+  after a6: 43 legal moves checked, errors: 0
+
+SCENARIO 2: Ruy Lopez
+  start position: 20 legal moves checked, errors: 0
+  after e4: 20 legal moves checked, errors: 0
+  after e5: 29 legal moves checked, errors: 0
+  after Nf3: 29 legal moves checked, errors: 0
+  after Nc6: 27 legal moves checked, errors: 0
+  after Bb5: 30 legal moves checked, errors: 0
+  after a6: 32 legal moves checked, errors: 0
+  after Ba4: 32 legal moves checked, errors: 0
+  after Nf6: 27 legal moves checked, errors: 0
+  after O-O: 30 legal moves checked, errors: 0
+  after Be7: 25 legal moves checked, errors: 0
+
+SCENARIO 3: En Passant Line
+  start position: 20 legal moves checked, errors: 0
+  after e4: 20 legal moves checked, errors: 0
+  after a6: 30 legal moves checked, errors: 0
+  after e5: 18 legal moves checked, errors: 0
+  after d5: 31 legal moves checked, errors: 0
+  after exd6: 28 legal moves checked, errors: 0
+
+SCENARIO 4: Promotion Line
+  start position: 20 legal moves checked, errors: 0
+  after a4: 20 legal moves checked, errors: 0
+  after b5: 22 legal moves checked, errors: 0
+  after axb5: 20 legal moves checked, errors: 0
+  after a6: 25 legal moves checked, errors: 0
+  after bxa6: 20 legal moves checked, errors: 0
+  after Nf6: 23 legal moves checked, errors: 0
+  after a7: 21 legal moves checked, errors: 0
+  after d5: 24 legal moves checked, errors: 0
+  after axb8=Q: 33 legal moves checked, errors: 0
+
+SCENARIO 5: Check/Checkmate Suffix Inputs
+  start position: 20 legal moves checked, errors: 0
+  after f3: 20 legal moves checked, errors: 0
+  after e5: 19 legal moves checked, errors: 0
+  after g4: 30 legal moves checked, errors: 0
+  after Qh4#: 0 legal moves checked, errors: 0
+
+========================================
+TOTAL POSITIONS CHECKED: 43
+TOTAL LEGAL MOVES CHECKED: 1096
+TOTAL ERRORS: 0
+========================================

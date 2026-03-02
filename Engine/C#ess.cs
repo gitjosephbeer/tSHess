@@ -1012,6 +1012,32 @@ namespace tSHess.Engine
 			}
 			return retVal;
 		}
+
+		public string ToSanString(SnapShot s)
+		{
+			if (s == null)
+				throw new ArgumentException("Invalid","s");
+
+			string retVal = "";
+			for (int i = 0; i < moves.Count; i++)
+			{
+				Move move = (Move)moves[i];
+				string san = "";
+				try
+				{
+					san = s.MoveToSAN(move);
+				}
+				catch
+				{
+					san = "ERROR";
+				}
+
+				retVal += san + (i == moves.Count-1 ? "" : ";");
+				if ((i + 1) < moves.Count && ((i + 1) % 10) == 0)
+					retVal += Environment.NewLine;
+			}
+			return retVal;
+		}
 	} // MoveList
 
 
