@@ -417,8 +417,74 @@ namespace tSHess.Engine
 			return true;
 		}
 
+		// Loading the table from a SAN openings file
+		public bool LoadSan(string fileName)
+		{
+			try
+			{
+				using (StreamReader sr = new StreamReader(fileName))
+				{
+					string line;
+					while ((line = sr.ReadLine()) != null)
+					{
+						SnapShot s = SnapShot.StartUpSnapShot();
+						// strip leading numeric label like "#14 " (keep rest of line),
+						// then strip inline comments ("#", ";" or "//") and skip empty lines
+						line = line.Trim();
+						if (line.StartsWith("#"))
+						{
+							int j = 1;
+							while (j < line.Length && Char.IsDigit(line[j])) j++;
+							if (j > 1 && (j == line.Length || Char.IsWhiteSpace(line[j])))
+							{
+								line = line.Substring(j).TrimStart();
+							}
+						}
+						int idxHash = line.IndexOf('#');
+						int idxSemi = line.IndexOf(';');
+						int idxSlash = line.IndexOf("//", StringComparison.Ordinal);
+						int commentIdx = -1;
+						if (idxHash >= 0) commentIdx = idxHash;
+						if (idxSemi >= 0 && (commentIdx == -1 || idxSemi < commentIdx)) commentIdx = idxSemi;
+						if (idxSlash >= 0 && (commentIdx == -1 || idxSlash < commentIdx)) commentIdx = idxSlash;
+						if (commentIdx >= 0)
+							line = line.Substring(0, commentIdx).Trim();
+						if (line.Length == 0)
+							continue;
+
+						string[] tokens = line.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
+						for (int i = 0; i < tokens.Length; i++)
+						{
+							try
+							{
+								string sanMove = tokens[i];
+								sanMove = sanMove == null ? "" : sanMove.Trim();
+								if (sanMove.Length == 0)
+									continue;
+
+								Move m = s.SANToMove(sanMove);
+
+								StoreMove(s,m);
+
+								s.PerformMove(m);
+							}
+							catch
+							{
+							}
+						}
+					}
+				}
+			}
+			catch
+			{
+				return false;
+			}
+
+			return true;
+		}
+
 		// Validate SAN (Standard Algebraic Notation) openings file. Returns a list of error messages (empty if valid).
-		public List<string> ValidateSANOpenings(string fileName)
+		public static List<string> ValidateSanOpenings(string fileName)
 		{
 			List<string> errors = new List<string>();
 			try
@@ -484,7 +550,7 @@ namespace tSHess.Engine
 		}
 
 		// Validate an openings file. Returns a list of error messages (empty if valid).
-		public List<string> ValidateOpenings(string fileName)
+		public static List<string> ValidateOpenings(string fileName)
 		{
 			List<string> errors = new List<string>();
 			try
@@ -4968,7 +5034,7 @@ moveCounter--;
 			{
 				bool bOK = false;
 				openings = new OpeningBook();
-				bOK = openings.Load(openingBookFileName);
+				bOK = openings.LoadSan(openingBookFileName);
 				if (bOK)
 					openingBooks[openingBookFileName] = openings;
 				else
