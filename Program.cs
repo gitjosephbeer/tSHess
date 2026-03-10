@@ -130,7 +130,7 @@ namespace tSHess
                     }
                     if (move_string.ToLower() == "help")
                     {
-                        m = s.GetBestMoveMTD(openingBookSan);
+                        m = s.GetBestMoveMTD(openingBookSan, OpeningBookFormat.SanNotation);
                         break;
                     }
 
@@ -172,13 +172,14 @@ namespace tSHess
 
                     Console.WriteLine("Illegal move, try again: ");
                 }
-                s.PerformMove(m);
                 Console.WriteLine();
+                s.PerformMove(m);
                 Console.WriteLine(s.ToString());
-                Console.WriteLine("\nthinking...\n");
-                m = s.GetBestMoveMTD(openingBookSan);
-                s.PerformMove(m);
                 Console.WriteLine();
+                Console.WriteLine("Thinking...");
+                Console.WriteLine();
+                m = s.GetBestMoveMTD(openingBookSan, OpeningBookFormat.SanNotation);
+                s.PerformMove(m);
                 Console.WriteLine(s.ToString());
                 c1++;
                 if ((c1 % 2) == 0)

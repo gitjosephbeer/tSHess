@@ -350,8 +350,15 @@ namespace tSHess.Engine
 				return entry.MoveList[Helper.RandomNumber(entry.MoveList.Count)].Clone();
 		}
 
-		// Loading the table from a file
-		public bool Load(string fileName)
+		// Loading the table from a file using the specified notation format.
+		public bool Load(string fileName, OpeningBookFormat format)
+		{
+			if (format == OpeningBookFormat.SanNotation)
+				return LoadSan(fileName);
+			return LoadCoordinate(fileName);
+		}
+
+		private bool LoadCoordinate(string fileName)
 		{
 			try 
 			{
@@ -424,7 +431,7 @@ namespace tSHess.Engine
 		}
 
 		// Loading the table from a SAN openings file
-		public bool LoadSan(string fileName)
+		private bool LoadSan(string fileName)
 		{
 			try
 			{
@@ -5022,7 +5029,7 @@ moveCounter--;
 
 
 /*
-		public Move GetBestMoveAlphaBeta(string openingBookFileName)
+		public Move GetBestMoveAlphaBeta(string openingBookFileName, OpeningBookFormat format)
 		{
 			OpeningBook openings = null;
 			openings = (OpeningBook)openingBooks[openingBookFileName];
@@ -5030,7 +5037,7 @@ moveCounter--;
 			{
 				bool bOK = false;
 				openings = new OpeningBook();
-				bOK = openings.Load(openingBookFileName);
+				bOK = openings.Load(openingBookFileName, format);
 				if (bOK)
 					openingBooks[openingBookFileName] = openings;
 				else
@@ -5040,7 +5047,7 @@ moveCounter--;
 		}
 */
 
-		public Move GetBestMoveMTD(string openingBookFileName)
+		public Move GetBestMoveMTD(string openingBookFileName, OpeningBookFormat format)
 		{
 			OpeningBook openings = null;
 			openings = (OpeningBook)openingBooks[openingBookFileName];
@@ -5048,7 +5055,7 @@ moveCounter--;
 			{
 				bool bOK = false;
 				openings = new OpeningBook();
-				bOK = openings.LoadSan(openingBookFileName);
+				bOK = openings.Load(openingBookFileName, format);
 				if (bOK)
 					openingBooks[openingBookFileName] = openings;
 				else
