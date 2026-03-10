@@ -4,6 +4,8 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tSHess", "tSHess.csproj", "{9DCFDD55-9433-7D05-60C2-5852A62640A6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tSHess.Tests", "tSHess.Tests\tSHess.Tests.csproj", "{0F95D9D1-D745-4B83-B19A-E0E7A7F37A3B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -14,6 +16,10 @@ Global
 		{9DCFDD55-9433-7D05-60C2-5852A62640A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9DCFDD55-9433-7D05-60C2-5852A62640A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9DCFDD55-9433-7D05-60C2-5852A62640A6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0F95D9D1-D745-4B83-B19A-E0E7A7F37A3B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F95D9D1-D745-4B83-B19A-E0E7A7F37A3B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F95D9D1-D745-4B83-B19A-E0E7A7F37A3B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F95D9D1-D745-4B83-B19A-E0E7A7F37A3B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

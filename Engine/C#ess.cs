@@ -66,6 +66,12 @@ namespace tSHess.Engine
 		Computer	= 1
 	}
 
+	public enum OpeningBookFormat : int
+	{
+		CoordinateNotation	= 0,
+		SanNotation			= 1
+	}
+
 	public enum PieceType : int
 	{
 		None	= -1,
@@ -483,8 +489,16 @@ namespace tSHess.Engine
 			return true;
 		}
 
+		// Validate an openings file using the specified notation format. Returns a list of error messages (empty if valid).
+		public static List<string> Validate(string fileName, OpeningBookFormat format)
+		{
+			if (format == OpeningBookFormat.SanNotation)
+				return ValidateOpeningsSan(fileName);
+			return ValidateOpenings(fileName);
+		}
+
 		// Validate SAN (Standard Algebraic Notation) openings file. Returns a list of error messages (empty if valid).
-		public static List<string> ValidateSanOpenings(string fileName)
+		private static List<string> ValidateOpeningsSan(string fileName)
 		{
 			List<string> errors = new List<string>();
 			try
@@ -550,7 +564,7 @@ namespace tSHess.Engine
 		}
 
 		// Validate an openings file. Returns a list of error messages (empty if valid).
-		public static List<string> ValidateOpenings(string fileName)
+		private static List<string> ValidateOpenings(string fileName)
 		{
 			List<string> errors = new List<string>();
 			try
@@ -4221,7 +4235,7 @@ moveCounter--;
 			if (history != null && history.Count > 0)
 				temp += Environment.NewLine+"Last move done: "+history[history.Count-1].ToString()+Environment.NewLine;
 			temp += Environment.NewLine+(whoToMove == Color.White ? "White" : "Black")+" to move now..."+Environment.NewLine;
-			temp += Environment.NewLine+"Legal moves:"+Environment.NewLine+legalMoves.ToString();
+			temp += Environment.NewLine+"Legal moves:"+Environment.NewLine+legalMoves.ToSanString(this.Clone());
 
 			return temp;
 		}
