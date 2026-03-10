@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -159,7 +159,7 @@ namespace tSHess
                     {
                         try
                         {
-                            m = s.SANToMove(move_string);
+                            m = s.SanToMove(move_string);
                             parsed = true;
                         }
                         catch

@@ -15,8 +15,8 @@ namespace tSHess.Tests
                 Move legalMove = legal[i];
                 try
                 {
-                    string san = snap.MoveToSAN(legalMove);
-                    Move reparsed = snap.SANToMove(san);
+                    string san = snap.MoveToSan(legalMove);
+                    Move reparsed = snap.SanToMove(san);
                     if (reparsed == null ||
                         reparsed.FieldNumberFrom != legalMove.FieldNumberFrom ||
                         reparsed.FieldNumberTo != legalMove.FieldNumberTo)
@@ -38,7 +38,7 @@ namespace tSHess.Tests
             {
                 try
                 {
-                    Move move = snapshot.SANToMove(san);
+                    Move move = snapshot.SanToMove(san);
                     snapshot.PerformMove(move);
                     ValidateRoundTripAtPosition(snapshot, errors);
                 }

@@ -14,7 +14,7 @@ namespace tSHess.Tests
             {
                 try
                 {
-                    Move move = snapshot.SANToMove(san);
+                    Move move = snapshot.SanToMove(san);
                     snapshot.PerformMove(move);
                 }
                 catch (Exception ex)

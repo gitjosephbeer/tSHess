@@ -475,7 +475,7 @@ namespace tSHess.Engine
 								if (sanMove.Length == 0)
 									continue;
 
-								Move m = s.SANToMove(sanMove);
+                                Move m = s.SanToMove(sanMove);
 
 								StoreMove(s,m);
 
@@ -547,7 +547,7 @@ namespace tSHess.Engine
 							string sanMove = tokens[i];
 							try
 							{
-								Move m = s.SANToMove(sanMove);
+								Move m = s.SanToMove(sanMove);
 								s.PerformMove(m);
 							}
 							catch (Exception ex)
@@ -1112,7 +1112,7 @@ namespace tSHess.Engine
 				string san = "";
 				try
 				{
-					san = s.MoveToSAN(move);
+					san = s.MoveToSan(move);
 				}
 				catch
 				{
@@ -4694,7 +4694,7 @@ moveCounter--;
 		} // PerformMove
 
 		// Convert a Move to Standard Algebraic Notation (SAN) based on current board state
-		public string MoveToSAN(Move move)
+		public string MoveToSan(Move move)
 		{
 			if (move == null)
 				throw new ArgumentException("Move cannot be null");
@@ -4785,7 +4785,7 @@ moveCounter--;
 
 		// Convert Standard Algebraic Notation (SAN) to a Move using current board state
 		// Examples: "e4", "Nf3", "Bxc4", "O-O", "e8=Q", "Nxe5+", etc.
-		public Move SANToMove(string san)
+		public Move SanToMove(string san)
 		{
 			if (string.IsNullOrEmpty(san))
 				throw new ArgumentException("SAN string cannot be empty");
