@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -112,7 +112,10 @@ namespace tSHess
                 m = null;
                 MoveList legalMoves = s.LegalMoves;
                 Console.WriteLine();
-                Console.WriteLine("Your move (e.g. e4 or A2-A4): ");
+                Move randomMove = legalMoves[Helper.RandomNumber(legalMoves.Count)];
+                string randomSan = "";
+                randomSan = s.MoveToSan(randomMove);
+                Console.WriteLine($"Your move (e.g. {randomSan} or {randomMove.ToString()}): ");
                 while (true)
                 {
                     string move_string = Console.ReadLine();
