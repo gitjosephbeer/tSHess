@@ -4240,7 +4240,11 @@ moveCounter--;
 			}
 			temp += Environment.NewLine+"     A    B    C    D    E    F    G    H  "+Environment.NewLine;
 			if (history != null && history.Count > 0)
-				temp += Environment.NewLine+"Last move done: "+history[history.Count-1].ToString()+Environment.NewLine;
+			{
+				Move lastMove = history[history.Count-1];
+				string lastMoveSan = lastMove.SnapShot.MoveToSan(lastMove);
+				temp += Environment.NewLine+"Last move done: "+lastMoveSan+Environment.NewLine;
+			}
 			temp += Environment.NewLine+(whoToMove == Color.White ? "White" : "Black")+" to move now..."+Environment.NewLine;
 			temp += Environment.NewLine+"Legal moves:"+Environment.NewLine+legalMoves.ToSanString(this.Clone());
 
