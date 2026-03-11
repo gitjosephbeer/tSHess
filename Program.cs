@@ -82,6 +82,19 @@ namespace tSHess
 
             string openingBook = "openings.txt";
             string openingBookSan = "openings-san.txt";
+            bool useUnicodeBoard = true;
+
+            if (args != null)
+            {
+                for (int i = 0; i < args.Length; i++)
+                {
+                    string a = args[i] == null ? "" : args[i].Trim().ToLower();
+                    if (a == "--ascii")
+                        useUnicodeBoard = false;
+                    else if (a == "--unicode")
+                        useUnicodeBoard = true;
+                }
+            }
 
             // CLI helper: validate SAN openings file and exit
             if (args != null && args.Length > 0 && args[0].ToLower() == "validate-openings-san")
@@ -98,7 +111,7 @@ namespace tSHess
             }
 
             Console.WriteLine("Welcom to tSHess!\n*****************\n\n");
-            Console.WriteLine(s);
+            Console.WriteLine(s.ToUserFriendlyString(useUnicode: useUnicodeBoard, includeLegalMoves: true, includeHistory: false));
             
             Move m = null;
             int c1 = 0;
@@ -177,13 +190,13 @@ namespace tSHess
                 }
                 Console.WriteLine();
                 s.PerformMove(m);
-                Console.WriteLine(s.ToString());
+                Console.WriteLine(s.ToUserFriendlyString(useUnicode: useUnicodeBoard, includeLegalMoves: true, includeHistory: false));
                 Console.WriteLine();
                 Console.WriteLine("Thinking...");
                 Console.WriteLine();
                 m = s.GetBestMoveMTD(openingBookSan, OpeningBookFormat.SanNotation);
                 s.PerformMove(m);
-                Console.WriteLine(s.ToString());
+                Console.WriteLine(s.ToUserFriendlyString(useUnicode: useUnicodeBoard, includeLegalMoves: true, includeHistory: false));
                 c1++;
                 if ((c1 % 2) == 0)
                     c2++;

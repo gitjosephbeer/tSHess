@@ -36,6 +36,7 @@ using System.Collections;
 using System.Collections.Specialized;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
 namespace tSHess.Engine
 {
@@ -191,11 +192,21 @@ namespace tSHess.Engine
 																													  VerticalCoordinateCode.V1, VerticalCoordinateCode.V2, VerticalCoordinateCode.V3, VerticalCoordinateCode.V4, VerticalCoordinateCode.V5, VerticalCoordinateCode.V6, VerticalCoordinateCode.V7, VerticalCoordinateCode.V8,
 																													  VerticalCoordinateCode.V1, VerticalCoordinateCode.V2, VerticalCoordinateCode.V3, VerticalCoordinateCode.V4, VerticalCoordinateCode.V5, VerticalCoordinateCode.V6, VerticalCoordinateCode.V7, VerticalCoordinateCode.V8 };
 
+		/// <summary>
+		/// Gets the configured material value for a piece type.
+		/// </summary>
+		/// <param name="pieceType">The piece type to evaluate.</param>
+		/// <returns>The material value used by the engine.</returns>
 		public static int PieceType2Value(PieceType pieceType)
 		{
 			return pieceType2Value[(int)pieceType];
 		}
 
+		/// <summary>
+		/// Gets the opposing side color.
+		/// </summary>
+		/// <param name="color">The input side color.</param>
+		/// <returns>The opposing side color.</returns>
 		public static Color OpponentColor(Color color)
 		{
 			if (color == Color.White)
@@ -239,6 +250,11 @@ namespace tSHess.Engine
 			return ((char)(fieldNumber2HorizontalCoordinateCode[f] + 'A')).ToString()+((char)(fieldNumber2VerticalCoordinateCode[f] + '1')).ToString();
 		}
 
+		/// <summary>
+		/// Parses coordinate notation in the form <c>A2-A4</c> into a move.
+		/// </summary>
+		/// <param name="move_string">Move text in coordinate notation.</param>
+		/// <returns>A move instance with parsed source and destination fields.</returns>
 		public static Move String2Move(string move_string)
 		{
 			var from_hc = HChar2HorizontalCoordinateCode(move_string[0]);
@@ -250,6 +266,12 @@ namespace tSHess.Engine
 			return new Move(from_fn,to_fn);
 		}
 
+		/// <summary>
+		/// Converts a file character from <c>A</c> to <c>H</c> into a horizontal coordinate code.
+		/// </summary>
+		/// <param name="c">A file character between <c>A</c> and <c>H</c>.</param>
+		/// <returns>The corresponding horizontal coordinate code.</returns>
+		/// <exception cref="ArgumentException">Thrown when <paramref name="c"/> is outside <c>A</c>..<c>H</c>.</exception>
 		public static HorizontalCoordinateCode HChar2HorizontalCoordinateCode(char c)
 		{
 			if (c < 'A' || c > 'H')
@@ -257,6 +279,12 @@ namespace tSHess.Engine
 			return (HorizontalCoordinateCode)(c - 'A');
 		}
 
+		/// <summary>
+		/// Converts a rank character from <c>1</c> to <c>8</c> into a vertical coordinate code.
+		/// </summary>
+		/// <param name="c">A rank character between <c>1</c> and <c>8</c>.</param>
+		/// <returns>The corresponding vertical coordinate code.</returns>
+		/// <exception cref="ArgumentException">Thrown when <paramref name="c"/> is outside <c>1</c>..<c>8</c>.</exception>
 		public static VerticalCoordinateCode VChar2VerticalCoordinateCode(char c)
 		{
 			if (c < '1' || c > '8')
@@ -269,20 +297,42 @@ namespace tSHess.Engine
 			return ((char)(hc + 'A')).ToString()+((char)(vc + '1')).ToString();
 		}
 
+		/// <summary>
+		/// Converts board coordinates to the internal field index (<c>0..63</c>).
+		/// </summary>
+		/// <param name="hc">Horizontal coordinate code (file).</param>
+		/// <param name="vc">Vertical coordinate code (rank).</param>
+		/// <returns>The internal field number for the coordinate pair.</returns>
 		public static int Coordinates2FieldNumber(HorizontalCoordinateCode hc, VerticalCoordinateCode vc)
 		{
 			return ((int)hc)*8 + (int)vc;
 		}
 		
 		private static Random random = new Random((int)DateTime.Now.Ticks);
+		/// <summary>
+		/// Returns a non-negative random number that is less than the specified maximum.
+		/// </summary>
+		/// <param name="maxNumber">Exclusive upper bound for the generated number.</param>
+		/// <returns>A random integer in the range <c>[0, maxNumber)</c>.</returns>
+		/// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="maxNumber"/> is less than zero.</exception>
 		public static int RandomNumber(int maxNumber)
 		{
 			return random.Next(maxNumber);
 		}
+		/// <summary>
+		/// Returns a random number within a specified range.
+		/// </summary>
+		/// <param name="minNumber">Inclusive lower bound of the random range.</param>
+		/// <param name="maxNumber">Exclusive upper bound of the random range.</param>
+		/// <returns>A random integer in the range <c>[minNumber, maxNumber)</c>.</returns>
 		public static int RandomNumber(int minNumber, int maxNumber)
 		{
 			return random.Next(minNumber,maxNumber);
 		}
+		/// <summary>
+		/// Returns a non-negative random integer.
+		/// </summary>
+		/// <returns>A random non-negative integer.</returns>
 		public static int RandomNumber()
 		{
 			return random.Next();
@@ -324,6 +374,9 @@ namespace tSHess.Engine
 		private const int TABLE_SIZE = 1024;
 		private OpeningBookEntry[] openingBookEntryTable = null;
 
+		/// <summary>
+		/// Initializes an empty opening book hash table.
+		/// </summary>
 		public OpeningBook()
 		{
 			openingBookEntryTable = new OpeningBookEntry[TABLE_SIZE];
@@ -331,8 +384,11 @@ namespace tSHess.Engine
 				openingBookEntryTable[i] = new OpeningBookEntry();
 		}
 
-		// Querying the table for a ready-made move to play.  Return null if there
-		// is none
+		/// <summary>
+		/// Queries the opening book for a move in the given position.
+		/// </summary>
+		/// <param name="snapShot">The position to query.</param>
+		/// <returns>A cloned opening move if available; otherwise <c>null</c>.</returns>
 		public Move Query(SnapShot snapShot)
 		{
 			// First, look for a match in the table
@@ -350,7 +406,12 @@ namespace tSHess.Engine
 				return entry.MoveList[Helper.RandomNumber(entry.MoveList.Count)].Clone();
 		}
 
-		// Loading the table from a file using the specified notation format.
+		/// <summary>
+		/// Loads opening lines from a file using the specified notation format.
+		/// </summary>
+		/// <param name="fileName">Path to the openings file.</param>
+		/// <param name="format">Notation format used in the file.</param>
+		/// <returns><c>true</c> if loading completed; otherwise <c>false</c>.</returns>
 		public bool Load(string fileName, OpeningBookFormat format)
 		{
 			if (format == OpeningBookFormat.SanNotation)
@@ -496,7 +557,12 @@ namespace tSHess.Engine
 			return true;
 		}
 
-		// Validate an openings file using the specified notation format. Returns a list of error messages (empty if valid).
+		/// <summary>
+		/// Validates an openings file and returns parse/legality errors.
+		/// </summary>
+		/// <param name="fileName">Path to the openings file.</param>
+		/// <param name="format">Notation format used in the file.</param>
+		/// <returns>A list of validation errors, or an empty list if valid.</returns>
 		public static List<string> Validate(string fileName, OpeningBookFormat format)
 		{
 			if (format == OpeningBookFormat.SanNotation)
@@ -733,7 +799,9 @@ namespace tSHess.Engine
 		// Data
 		private TranspositionEntry[] table = null;
 
-		// Construction
+		/// <summary>
+		/// Initializes an empty transposition table.
+		/// </summary>
 		public TranspositionTable()
 		{
 			table = new TranspositionEntry[TABLE_SIZE];
@@ -741,10 +809,12 @@ namespace tSHess.Engine
 				table[i] = new TranspositionEntry();
 		}
 
-		// boolean LookupBoard( jcBoard theBoard, jcMove theMove )
-		// Verify whether there is a stored evaluation for a given board.
-		// If so, return TRUE and copy the appropriate values into the
-		// output parameter
+		/// <summary>
+		/// Looks up a stored evaluation for the given snapshot.
+		/// </summary>
+		/// <param name="snapShot">Position to query.</param>
+		/// <param name="move">Output target to receive stored evaluation metadata.</param>
+		/// <returns><c>true</c> when a matching table entry is found; otherwise <c>false</c>.</returns>
 		public bool LookupBoard(SnapShot snapShot, Move move)
 		{
 			// Find the board's hash position in Table
@@ -767,8 +837,15 @@ namespace tSHess.Engine
 			return true;
 		}
 
-		// public StoreBoard( theBoard, eval, evalType, depth, timeStamp )
-		// Store a good evaluation found through alphabeta for a certain board position
+		/// <summary>
+		/// Stores an evaluation for the given snapshot in the transposition table.
+		/// </summary>
+		/// <param name="snapShot">Position signature to store.</param>
+		/// <param name="evaluation">Evaluation score.</param>
+		/// <param name="evaluationType">Bound accuracy type of the score.</param>
+		/// <param name="searchDepth">Depth at which the score was obtained.</param>
+		/// <param name="timeStamp">Search timestamp used for replacement decisions.</param>
+		/// <returns><c>true</c> when the call completes (including when the existing entry is kept).</returns>
 		public bool StoreSnapShot(SnapShot snapShot, int evaluation, EvaluationType evaluationType, int searchDepth, int timeStamp)
 		{
 			int key = Math.Abs(snapShot.GetHashCode() % TABLE_SIZE);
@@ -823,11 +900,20 @@ namespace tSHess.Engine
 			}
 		}
 
+		/// <summary>
+		/// Returns the singleton instance of the move history table.
+		/// </summary>
+		/// <returns>The shared move history table instance.</returns>
 		public static MoveHistoryTable GetInstance()
 		{
 			return singleInstance;
 		}
 
+		/// <summary>
+		/// Records a move occurrence for move-ordering heuristics.
+		/// </summary>
+		/// <param name="color">Side for which the move is being recorded.</param>
+		/// <param name="move">Move to record; null values are ignored.</param>
 		public void AddMove(Color color, Move move)
 		{
 			if (move == null)
@@ -839,6 +925,9 @@ namespace tSHess.Engine
 				history[1,move.FieldNumberFrom,move.FieldNumberTo]++;
 		}
 
+		/// <summary>
+		/// Resets all recorded move history counters.
+		/// </summary>
 		public void Clear()
 		{
 			for (int i = 0; i < 2; i++)
@@ -875,6 +964,11 @@ namespace tSHess.Engine
 		// If set, this specific piece type will be used (for SAN-based moves)
 		public PromotionPieceType? PromotionPieceType = null;
 
+		/// <summary>
+		/// Compares two moves by source and destination field numbers.
+		/// </summary>
+		/// <param name="o">Object to compare with.</param>
+		/// <returns><c>true</c> when both moves target the same from/to fields; otherwise <c>false</c>.</returns>
 		public override bool Equals(object o)
 		{
 			Move m = o as Move;
@@ -884,16 +978,29 @@ namespace tSHess.Engine
 				return false;
 		}
 
+		/// <summary>
+		/// Returns a hash code based on the coordinate move representation.
+		/// </summary>
+		/// <returns>A hash code for this move.</returns>
 		public override int GetHashCode()
 		{
 			return this.ToString().GetHashCode();
 		}
 
+		/// <summary>
+		/// Returns coordinate notation in the form <c>A2-A4</c>.
+		/// </summary>
+		/// <returns>Coordinate move text.</returns>
 		public override string ToString()
 		{
 			return Helper.FieldNumber2String(this.FieldNumberFrom)+"-"+Helper.FieldNumber2String(this.FieldNumberTo);
 		}
 
+		/// <summary>
+		/// Returns move text and optionally prefixes snapshot information.
+		/// </summary>
+		/// <param name="includeSnapShot">Whether to include snapshot text when available.</param>
+		/// <returns>Formatted move string.</returns>
 		public string ToString(bool includeSnapShot)
 		{
 			string retVal = "";
@@ -903,11 +1010,19 @@ namespace tSHess.Engine
 			return retVal;
 		}
 		
+		/// <summary>
+		/// Creates the inverse move by swapping source and destination fields.
+		/// </summary>
+		/// <returns>The inverse move.</returns>
 		public Move Inverse()
 		{
 			return new Move(this.FieldNumberTo,this.FieldNumberFrom);
 		}
 
+		/// <summary>
+		/// Creates a deep clone of this move and its optional snapshot.
+		/// </summary>
+		/// <returns>A cloned move instance.</returns>
 		public Move Clone()
 		{
 			Move m = new Move();
@@ -926,10 +1041,19 @@ namespace tSHess.Engine
 			return m;
 		}
 
+		/// <summary>
+		/// Initializes an empty move with unset fields.
+		/// </summary>
 		public Move()
 		{
 		}
 
+		/// <summary>
+		/// Initializes a move using internal field numbers.
+		/// </summary>
+		/// <param name="fieldNumberFrom">Source field index (0..63).</param>
+		/// <param name="fieldNumberTo">Destination field index (0..63).</param>
+		/// <exception cref="ArgumentException">Thrown when either field number is outside 0..63.</exception>
 		public Move(int fieldNumberFrom, int fieldNumberTo)
 		{
 			if (fieldNumberFrom < 0 || fieldNumberFrom > 63)
@@ -959,11 +1083,19 @@ namespace tSHess.Engine
 			}
 		}
 
+		/// <summary>
+		/// Copies the list contents to an array beginning at the specified index.
+		/// </summary>
+		/// <param name="array">The destination array.</param>
+		/// <param name="index">Start index in <paramref name="array"/>.</param>
 		public virtual void CopyTo(Array array, int index)
 		{
 			moves.CopyTo(array,index);
 		}
 
+		/// <summary>
+		/// Gets the number of moves currently stored.
+		/// </summary>
 		public virtual int Count
 		{
 			get
@@ -972,6 +1104,10 @@ namespace tSHess.Engine
 			}
 		}
 
+		/// <summary>
+		/// Sorts moves by history-heuristic score for the given side.
+		/// </summary>
+		/// <param name="color">The side whose history table should be used.</param>
 		public virtual void Sort(Color color)
 		{
 			SortedList sl = new SortedList(new MoveHistoryTable.MoveComparer(color));
@@ -982,6 +1118,10 @@ namespace tSHess.Engine
 				this.Add((Move)sl.GetKey(i));
 		}
 
+		/// <summary>
+		/// Returns an enumerator for iterating through the move list.
+		/// </summary>
+		/// <returns>An enumerator over the contained moves.</returns>
 		public virtual IEnumerator GetEnumerator()
 		{
 			return moves.GetEnumerator();
@@ -1003,6 +1143,11 @@ namespace tSHess.Engine
 			}
 		}
 
+		/// <summary>
+		/// Determines whether an equivalent move is present in the list.
+		/// </summary>
+		/// <param name="move">The move to search for.</param>
+		/// <returns><c>true</c> when a matching move exists; otherwise <c>false</c>.</returns>
 		public virtual bool Contains(Move move)
 		{
 			if (move == null)
@@ -1015,6 +1160,11 @@ namespace tSHess.Engine
 			return false;
 		}
 
+		/// <summary>
+		/// Adds a move to the list.
+		/// </summary>
+		/// <param name="move">The move to add.</param>
+		/// <remarks>Null values and suppressed duplicates are ignored.</remarks>
 		public virtual void Add(Move move)
 		{
 			if (move == null || (suppressDuplicates && this.Contains(move)))
@@ -1022,6 +1172,10 @@ namespace tSHess.Engine
 			moves.Add(move);
 		}
 
+		/// <summary>
+		/// Appends all moves from another list.
+		/// </summary>
+		/// <param name="moves">Source list to merge from.</param>
 		public virtual void Merge(MoveList moves)
 		{
 			if (moves == null)
@@ -1030,6 +1184,10 @@ namespace tSHess.Engine
 				this.Add(moves[i]);
 		}
 
+		/// <summary>
+		/// Removes all matching occurrences of a move.
+		/// </summary>
+		/// <param name="move">The move to remove.</param>
 		public virtual void Remove(Move move)
 		{
 			if (move == null)
@@ -1041,6 +1199,10 @@ namespace tSHess.Engine
 			}
 		}
 
+		/// <summary>
+		/// Removes a move at a given index.
+		/// </summary>
+		/// <param name="index">Index to remove; out-of-range values are ignored.</param>
 		public virtual void RemoveAt(int index)
 		{
 			if (moves.Count == 0 || index < 0 || index+1 > moves.Count)
@@ -1048,11 +1210,19 @@ namespace tSHess.Engine
 			moves.RemoveAt(index);
 		}
 
+		/// <summary>
+		/// Removes all moves from the list.
+		/// </summary>
 		public virtual void Clear()
 		{
 			moves.Clear();
 		}
 
+		/// <summary>
+		/// Gets a move by zero-based index.
+		/// </summary>
+		/// <param name="index">Requested index.</param>
+		/// <returns>The move at <paramref name="index"/>, or <c>null</c> when out of range.</returns>
 		public virtual Move this[int index]
 		{
 			get
@@ -1063,6 +1233,12 @@ namespace tSHess.Engine
 			}
 		}
 
+		/// <summary>
+		/// Gets the first move matching the given source and destination fields.
+		/// </summary>
+		/// <param name="fieldNumberFrom">Source field index (0..63).</param>
+		/// <param name="fieldNumberTo">Destination field index (0..63).</param>
+		/// <returns>A matching move, or <c>null</c> when none exists or input is out of range.</returns>
 		public virtual Move this[int fieldNumberFrom, int fieldNumberTo]
 		{
 			get
@@ -1079,6 +1255,10 @@ namespace tSHess.Engine
 			}
 		}
 
+		/// <summary>
+		/// Creates a deep clone of this list and its move entries.
+		/// </summary>
+		/// <returns>A cloned move list.</returns>
 		public MoveList Clone()
 		{
 			MoveList ml = new MoveList();
@@ -1100,6 +1280,12 @@ namespace tSHess.Engine
 			return retVal;
 		}
 
+		/// <summary>
+		/// Formats the move list as SAN values for a specific position context.
+		/// </summary>
+		/// <param name="s">Snapshot used to convert each move to SAN.</param>
+		/// <returns>Semicolon-separated SAN text. Individual conversion failures are rendered as <c>ERROR</c>.</returns>
+		/// <exception cref="ArgumentException">Thrown when <paramref name="s"/> is null.</exception>
 		public string ToSanString(SnapShot s)
 		{
 			if (s == null)
@@ -2377,7 +2563,11 @@ moveCounter--;
 			}
 		}
 
-		// Compute the board's material balance, from the point of view of the "color" player
+		/// <summary>
+		/// Evaluates the current position using material and positional terms from the given perspective.
+		/// </summary>
+		/// <param name="color">The side from whose perspective the score is computed.</param>
+		/// <returns>A higher value indicates a better position for <paramref name="color"/>.</returns>
 		public int EvaluateComplete(Color color)
 		{
 			AnalyzePawnSituation(color);
@@ -2387,7 +2577,11 @@ moveCounter--;
 		}
 
 
-		// Compute the board's material balance, from the point of view of the "color" player
+		/// <summary>
+		/// Computes the material-only evaluation of the current position from the given perspective.
+		/// </summary>
+		/// <param name="color">The side from whose perspective the score is computed.</param>
+		/// <returns>A positive value indicates a material advantage for <paramref name="color"/>.</returns>
 		public int EvaluateMaterial(Color color)
 		{
 			// If both sides are equal, no need to compute anything!
@@ -2439,6 +2633,10 @@ moveCounter--;
 		public event GameOverEventHandler GameOverEventHandler;
 		public event PieceHitEventHandler PieceHitEventHandler;
 
+		/// <summary>
+		/// Creates a new snapshot in the standard chess start position and precomputes legal moves.
+		/// </summary>
+		/// <returns>A snapshot ready for play with white to move.</returns>
 		public static SnapShot StartUpSnapShot()
 		{
 			SnapShot s = new SnapShot((byte[])startupSituation.Clone(),Color.White,false,false,true);
@@ -4251,6 +4449,190 @@ moveCounter--;
 			return temp;
 		}
 
+		private static char PieceToAsciiChar(byte piece)
+		{
+			if (piece == 0)
+				return '.';
+
+			bool isBlack = (piece & 8) != 0;
+			char c;
+			switch ((PieceType)(piece & 7))
+			{
+				case PieceType.Pawn:
+					c = 'P';
+					break;
+				case PieceType.Rook:
+					c = 'R';
+					break;
+				case PieceType.Knight:
+					c = 'N';
+					break;
+				case PieceType.Bishop:
+					c = 'B';
+					break;
+				case PieceType.Queen:
+					c = 'Q';
+					break;
+				case PieceType.King:
+					c = 'K';
+					break;
+				default:
+					c = '?';
+					break;
+			}
+			return isBlack ? Char.ToLower(c) : c;
+		}
+
+		private static char PieceToUnicodeChar(byte piece)
+		{
+			if (piece == 0)
+				return '·';
+
+			bool isBlack = (piece & 8) != 0;
+			switch ((PieceType)(piece & 7))
+			{
+				case PieceType.Pawn:
+					return isBlack ? '♙' : '♟';
+				case PieceType.Rook:
+					return isBlack ? '♖' : '♜';
+				case PieceType.Knight:
+					return isBlack ? '♘' : '♞';
+				case PieceType.Bishop:
+					return isBlack ? '♗' : '♝';
+				case PieceType.Queen:
+					return isBlack ? '♕' : '♛';
+				case PieceType.King:
+					return isBlack ? '♔' : '♚';
+				default:
+					return '?';
+			}
+		}
+
+		/// <summary>
+		/// Returns a user-friendly board representation with optional Unicode symbols and context details.
+		/// </summary>
+		/// <param name="useUnicode">If true, uses Unicode chess symbols with checkerboard field contrast; otherwise uses ASCII piece letters.</param>
+		/// <param name="includeLegalMoves">If true, appends legal SAN moves to the output.</param>
+		/// <param name="includeHistory">If true, appends the recent move history.</param>
+		/// <param name="historySteps">Maximum number of history entries to include when <paramref name="includeHistory"/> is true.</param>
+		/// <param name="whiteAtBottom">If true, renders from White's perspective; otherwise from Black's perspective.</param>
+		/// <returns>A formatted board and game-state string for user-facing display.</returns>
+		public string ToUserFriendlyString(bool useUnicode = true, bool includeLegalMoves = true, bool includeHistory = false, int historySteps = 8, bool whiteAtBottom = true)
+		{
+			StringBuilder sb = new StringBuilder();
+			sb.AppendLine("tSHess Snapshot");
+			sb.AppendLine("-------------");
+			sb.AppendLine("To move: " + (whoToMove == Color.White ? "White" : "Black") + " | Status: " + currentSituationCode.ToString());
+
+			if (history != null && history.Count > 0)
+			{
+				try
+				{
+					Move lastMove = history[history.Count-1];
+					string san = lastMove.SnapShot.MoveToSan(lastMove);
+					sb.AppendLine("Last move: " + san);
+				}
+				catch
+				{
+					sb.AppendLine("Last move: " + history[history.Count-1].ToString());
+				}
+			}
+
+			sb.AppendLine();
+
+			int rankStart = whiteAtBottom ? 7 : 0;
+			int rankEnd = whiteAtBottom ? -1 : 8;
+			int rankStep = whiteAtBottom ? -1 : 1;
+			int fileStart = whiteAtBottom ? 0 : 7;
+			int fileEnd = whiteAtBottom ? 8 : -1;
+			int fileStep = whiteAtBottom ? 1 : -1;
+
+			if (useUnicode)
+			{
+				// Full-width Unicode mode: every frame character occupies exactly 2 terminal
+				// columns, matching the width of chess piece glyphs, so the grid stays aligned.
+				// Frame chars: ｜(U+FF5C) ＋(U+FF0B) －(U+FF0D) 　(U+3000 ideographic space)
+				// File letters: Ａ-Ｈ (U+FF21-U+FF28), Rank digits: １-８ (U+FF11-U+FF18)
+				// Empty squares use guaranteed full-width CJK chars by parity
+				// (light: ・ U+30FB Katakana Middle Dot, dark: 　 U+3000 Ideographic Space).
+				const string fwSep = "　　＋－＋－＋－＋－＋－＋－＋－＋－＋";
+				sb.Append("　　　");
+				for (int file = fileStart; file != fileEnd; file += fileStep)
+					sb.Append((char)(0xFF21 + file)).Append('　');
+				sb.AppendLine();
+				sb.AppendLine(fwSep);
+
+				for (int rank = rankStart; rank != rankEnd; rank += rankStep)
+				{
+					sb.Append((char)(0xFF10 + rank + 1)).Append('　');
+					for (int file = fileStart; file != fileEnd; file += fileStep)
+					{
+						int field = file * 8 + rank;
+						byte sq = situation[field];
+						bool isDarkSquare = ((file + rank) & 1) == 0;
+						char piece = sq == 0 ? (isDarkSquare ? '　' : '・') : PieceToUnicodeChar(sq);
+						sb.Append('｜').Append(piece);
+					}
+					sb.Append('｜').Append('　').Append((char)(0xFF10 + rank + 1)).AppendLine();
+					sb.AppendLine(fwSep);
+				}
+
+				sb.Append("　　　");
+				for (int file = fileStart; file != fileEnd; file += fileStep)
+					sb.Append((char)(0xFF21 + file)).Append('　');
+				sb.AppendLine();
+			}
+			else
+			{
+				string sep = "  +---+---+---+---+---+---+---+---+";
+				sb.Append("    ");
+				for (int file = fileStart; file != fileEnd; file += fileStep)
+					sb.Append((char)('A' + file) + "   ");
+				sb.AppendLine();
+				sb.AppendLine(sep);
+
+				for (int rank = rankStart; rank != rankEnd; rank += rankStep)
+				{
+					sb.Append((rank + 1).ToString() + " ");
+					for (int file = fileStart; file != fileEnd; file += fileStep)
+					{
+						int field = file * 8 + rank;
+						char piece = PieceToAsciiChar(situation[field]);
+						sb.Append("| ");
+						sb.Append(piece);
+						sb.Append(" ");
+					}
+					sb.AppendLine("| " + (rank + 1).ToString());
+					sb.AppendLine(sep);
+				}
+
+				sb.Append("    ");
+				for (int file = fileStart; file != fileEnd; file += fileStep)
+					sb.Append((char)('A' + file) + "   ");
+				sb.AppendLine();
+			}
+
+			if (includeLegalMoves)
+			{
+				sb.AppendLine();
+				sb.AppendLine("Legal moves:");
+				sb.AppendLine(legalMoves.ToSanString(this.Clone()));
+			}
+
+			if (includeHistory && history != null && history.Count > 0)
+			{
+				if (historySteps < 1)
+					historySteps = 1;
+				historySteps = (historySteps > history.Count ? history.Count : historySteps);
+				sb.AppendLine();
+				sb.AppendLine("History (last " + historySteps.ToString() + " of " + history.Count.ToString() + " steps):");
+				for (int i = history.Count-historySteps; i < history.Count; i++)
+					sb.AppendLine(history[i].ToString(true));
+			}
+
+			return sb.ToString();
+		}
+
 		public string ToString(int lastHistoryStepsIncluded)
 		{
 			string retVal = this.ToString();
@@ -4355,6 +4737,10 @@ moveCounter--;
 			this.history = snapShot.history;
 		}
 
+		/// <summary>
+		/// Reverts the current snapshot by a number of half-moves using recorded history.
+		/// </summary>
+		/// <param name="countMoves">Number of moves to revert; values less than one are ignored.</param>
 		public void Rollback(int countMoves)
 		{
 			if (countMoves < 1)
@@ -4368,6 +4754,11 @@ moveCounter--;
 			this.history = historyBackup;
 		}
 		
+		/// <summary>
+		/// Applies a legal move to the current snapshot and updates derived state.
+		/// </summary>
+		/// <param name="move">The move to apply; it must exist in the current legal move list.</param>
+		/// <exception cref="ArgumentException">Thrown when <paramref name="move"/> is null or not legal in the current position.</exception>
 		public void PerformMove(Move move)
 		{
 			PerformMove(move,false);
@@ -4697,7 +5088,12 @@ moveCounter--;
 			}
 		} // PerformMove
 
-		// Convert a Move to Standard Algebraic Notation (SAN) based on current board state
+		/// <summary>
+		/// Converts a legal move in the current position into Standard Algebraic Notation (SAN).
+		/// </summary>
+		/// <param name="move">The move to convert.</param>
+		/// <returns>The SAN representation for the move in the current board context.</returns>
+		/// <exception cref="ArgumentException">Thrown when <paramref name="move"/> is null.</exception>
 		public string MoveToSan(Move move)
 		{
 			if (move == null)
@@ -4787,8 +5183,12 @@ moveCounter--;
 			return result;
 		}
 
-		// Convert Standard Algebraic Notation (SAN) to a Move using current board state
-		// Examples: "e4", "Nf3", "Bxc4", "O-O", "e8=Q", "Nxe5+", etc.
+		/// <summary>
+		/// Parses Standard Algebraic Notation (SAN) in the current position and returns the matching legal move.
+		/// </summary>
+		/// <param name="san">A SAN move token such as <c>e4</c>, <c>Nf3</c>, <c>O-O</c>, or <c>axb8=Q</c>.</param>
+		/// <returns>The matching legal move for the current board state.</returns>
+		/// <exception cref="ArgumentException">Thrown when the SAN is empty, invalid, ambiguous, or not legal in the current position.</exception>
 		public Move SanToMove(string san)
 		{
 			if (string.IsNullOrEmpty(san))
