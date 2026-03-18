@@ -784,6 +784,10 @@ namespace tSHess.Engine
 		// stored!
 		public long TimeStamp = 0;
 
+		// Optional best-move hint for move ordering on lookup.
+		public int BestMoveFrom = -1;
+		public int BestMoveTo = -1;
+
 		// construction
 		public TranspositionEntry()
 		{
@@ -834,6 +838,8 @@ namespace tSHess.Engine
 			move.Evaluation = entry.Evaluation;
 			move.EvaluationType = entry.EvaluationType;
 			move.SearchDepth = entry.SearchDepth;
+			move.FieldNumberFrom = entry.BestMoveFrom;
+			move.FieldNumberTo = entry.BestMoveTo;
 			return true;
 		}
 
@@ -847,6 +853,11 @@ namespace tSHess.Engine
 		/// <param name="timeStamp">Search timestamp used for replacement decisions.</param>
 		/// <returns><c>true</c> when the call completes (including when the existing entry is kept).</returns>
 		public bool StoreSnapShot(SnapShot snapShot, int evaluation, EvaluationType evaluationType, int searchDepth, int timeStamp)
+		{
+			return StoreSnapShot(snapShot,evaluation,evaluationType,searchDepth,timeStamp,null);
+		}
+
+		public bool StoreSnapShot(SnapShot snapShot, int evaluation, EvaluationType evaluationType, int searchDepth, int timeStamp, Move bestMove)
 		{
 			int key = Math.Abs(snapShot.GetHashCode() % TABLE_SIZE);
 			TranspositionEntry entry = table[key];
@@ -862,6 +873,16 @@ namespace tSHess.Engine
 			entry.SearchDepth = searchDepth;
 			entry.EvaluationType = evaluationType;
 			entry.TimeStamp = timeStamp;
+			if (bestMove != null)
+			{
+				entry.BestMoveFrom = bestMove.FieldNumberFrom;
+				entry.BestMoveTo = bestMove.FieldNumberTo;
+			}
+			else
+			{
+				entry.BestMoveFrom = -1;
+				entry.BestMoveTo = -1;
+			}
 			return true;
 		}
 	} // TranspositionTable
@@ -923,6 +944,15 @@ namespace tSHess.Engine
 				history[0,move.FieldNumberFrom,move.FieldNumberTo]++;
 			else
 				history[1,move.FieldNumberFrom,move.FieldNumberTo]++;
+		}
+
+		public int GetScore(Color color, Move move)
+		{
+			if (move == null)
+				return 0;
+			if (color == Color.White)
+				return history[0,move.FieldNumberFrom,move.FieldNumberTo];
+			return history[1,move.FieldNumberFrom,move.FieldNumberTo];
 		}
 
 		/// <summary>
@@ -1357,6 +1387,7 @@ namespace tSHess.Engine
 	public class SnapShot
 	{
 		private static BestMovePicker MTDPicker = new MTD();
+		private static BestMovePicker MTDPickerV2 = new MTDv2();
 //		private static BestMovePicker AlphaBetaPicker = new AlphaBeta();
 		private static Hashtable openingBooks = new Hashtable();
 
@@ -2115,6 +2146,401 @@ moveCounter--;
 			}
 		}
 
+		public class MTDv2 : BestMovePicker
+		{
+			public bool Verbose = false;
+			private int timeStampCounter = 0;
+			private int maxIterationDepth = 15;
+			private int maxSearchSize = 50000;
+
+			public int MaxIterationDepth
+			{
+				get { return maxIterationDepth; }
+				set { maxIterationDepth = value; }
+			}
+
+			public int MaxSearchSize
+			{
+				get { return maxSearchSize; }
+				set { maxSearchSize = value; }
+			}
+
+			private int NextTimeStamp()
+			{
+				unchecked
+				{
+					timeStampCounter++;
+					if (timeStampCounter <= 0)
+						timeStampCounter = 1;
+					return timeStampCounter;
+				}
+			}
+
+			private bool IsSameMove(Move a, Move b)
+			{
+				if (a == null || b == null)
+					return false;
+				return a.FieldNumberFrom == b.FieldNumberFrom && a.FieldNumberTo == b.FieldNumberTo;
+			}
+
+			private int GetMoveOrderingScore(SnapShot snapShot, Move move, Move ttMove, Move pvMove, bool capturesOnly)
+			{
+				int score = hTable.GetScore(snapShot.whoToMove,move);
+
+				if (IsSameMove(move,ttMove))
+					score += 2_000_000;
+
+				if (IsSameMove(move,pvMove))
+					score += 1_000_000;
+
+				if (capturesOnly || move.PieceHit != PieceType.None)
+				{
+					int capturedValue = move.PieceHit == PieceType.None ? 0 : Helper.PieceType2Value(move.PieceHit);
+					int movingValue = Helper.PieceType2Value((PieceType)(snapShot.situation[move.FieldNumberFrom] & 0x07));
+					score += capturedValue * 10 - movingValue;
+				}
+
+				return score;
+			}
+
+			private List<Move> GetOrderedMoves(SnapShot snapShot, bool capturesOnly, Move ttMove, Move pvMove)
+			{
+				List<Move> ordered = new List<Move>(snapShot.legalMoves.Count);
+				for (int i = 0; i < snapShot.legalMoves.Count; i++)
+				{
+					Move move = snapShot.legalMoves[i];
+					if (!capturesOnly || move.PieceHit != PieceType.None)
+						ordered.Add(move);
+				}
+
+				ordered.Sort((left,right) =>
+				{
+					int rightScore = GetMoveOrderingScore(snapShot,right,ttMove,pvMove,capturesOnly);
+					int leftScore = GetMoveOrderingScore(snapShot,left,ttMove,pvMove,capturesOnly);
+					return rightScore.CompareTo(leftScore);
+				});
+
+				return ordered;
+			}
+
+			public override Move GetBestMove(SnapShot snapShot, OpeningBook openings)
+			{
+				numRegularNodes = 0;
+				numQuiescenceNodes = 0;
+				numRegularCutoffs = 0;
+				numRegularTTHits = 0;
+				numQuiescenceTTHits = 0;
+				moveCounter++;
+
+				if (openings != null)
+				{
+					Move openingMove = openings.Query(snapShot);
+					if (openingMove != null)
+						return openingMove;
+				}
+
+				Move bestMove = null;
+				Move pvMove = null;
+				int bestGuess = 0;
+				Color fromWhosePerspective = snapShot.whoToMove;
+				this.fromWhosePerspective = fromWhosePerspective;
+
+				for (int iterationDepth = 2; iterationDepth <= maxIterationDepth && (numRegularNodes + numQuiescenceNodes) < maxSearchSize; iterationDepth += 2)
+				{
+					if (iterationDepth >= 12)
+						hTable.Clear();
+
+					Move candidate = MTD_f(snapShot,bestGuess,iterationDepth,pvMove);
+					if (candidate == null)
+						break;
+
+					bestMove = candidate;
+					bestGuess = candidate.Evaluation;
+					pvMove = candidate.Clone();
+
+					if (Verbose)
+					{
+						int cp = fromWhosePerspective == Color.White ? bestMove.Evaluation : -bestMove.Evaluation;
+						Console.WriteLine("d=" + iterationDepth + " score=" + cp + " nodes=" + (numRegularNodes + numQuiescenceNodes));
+					}
+				}
+
+				if (bestMove == null)
+					bestMove = MTD_f(snapShot,0,2,pvMove);
+
+				if (bestMove == null)
+					bestMove = new Move(snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField,snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField);
+
+				moveCounter--;
+				return bestMove;
+			}
+
+			private Move MTD_f(SnapShot snapShot, int firstGuess, int depth, Move pvMove)
+			{
+				int upperBound = ALPHABETA_MAXVAL;
+				int lowerBound = ALPHABETA_MINVAL;
+				int currentEstimate = firstGuess;
+				Move bestMove = null;
+
+				do
+				{
+					int beta = (currentEstimate == lowerBound) ? currentEstimate + 1 : currentEstimate;
+					bestMove = UnrolledAlphaBeta(snapShot,depth,beta - 1,beta,pvMove);
+					if (bestMove == null)
+						break;
+
+					currentEstimate = bestMove.Evaluation;
+					if (currentEstimate < beta)
+						upperBound = currentEstimate;
+					else
+						lowerBound = currentEstimate;
+
+					pvMove = bestMove;
+				}
+				while (lowerBound < upperBound);
+
+				return bestMove;
+			}
+
+			private Move UnrolledAlphaBeta(SnapShot snapShot, int depth, int alpha, int beta, Move pvMove)
+			{
+				snapShot.CalculateLegalMoves();
+
+				Move ttMove = new Move();
+				if (!tTable.LookupBoard(snapShot,ttMove) || ttMove.FieldNumberFrom < 0)
+					ttMove = null;
+
+				List<Move> orderedMoves = GetOrderedMoves(snapShot,false,ttMove,pvMove);
+
+				int bestSoFar = ALPHABETA_MINVAL;
+				Move bestMove = null;
+
+				for (int i = 0; i < orderedMoves.Count; i++)
+				{
+					Move move = orderedMoves[i];
+					snapShot.PerformMove(move,true);
+					moveCounter++;
+					int moveScore = AlphaBeta(MINNODE,snapShot,depth - 1,alpha,beta,pvMove);
+					moveCounter--;
+					snapShot.Rollback(1);
+
+					if (moveScore > bestSoFar)
+					{
+						bestSoFar = moveScore;
+						bestMove = move.Clone();
+						bestMove.Evaluation = moveScore;
+						alpha = Math.Max(alpha,bestSoFar);
+
+						if (bestSoFar >= beta)
+						{
+							tTable.StoreSnapShot(snapShot,bestSoFar,EvaluationType.Lowerbound,depth,NextTimeStamp(),bestMove);
+							hTable.AddMove(snapShot.whoToMove,move);
+							numRegularCutoffs++;
+							return bestMove;
+						}
+					}
+				}
+
+				if (bestMove == null)
+				{
+					bestMove = new Move(snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField,snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField);
+					bestMove.PieceType = PieceType.King;
+					bestMove.MoveCode = MoveCode.Resign;
+					bestMove.Evaluation = bestSoFar;
+				}
+
+				tTable.StoreSnapShot(snapShot,bestSoFar,EvaluationType.Accurate,depth,NextTimeStamp(),bestMove);
+				bestMove.Evaluation = bestSoFar;
+				return bestMove;
+			}
+
+			private int AlphaBeta(bool nodeType, SnapShot snapShot, int depth, int alpha, int beta, Move pvMove)
+			{
+				numRegularNodes++;
+				if ((numRegularNodes + numQuiescenceNodes) > maxSearchSize)
+					return (snapShot.EvaluateMaterial(fromWhosePerspective) >> 3) << 3;
+
+				Move cachedMove = new Move();
+				if (tTable.LookupBoard(snapShot,cachedMove) && cachedMove.SearchDepth >= depth)
+				{
+					if (nodeType == MAXNODE)
+					{
+						if ((cachedMove.EvaluationType == EvaluationType.Accurate || cachedMove.EvaluationType == EvaluationType.Lowerbound) && cachedMove.Evaluation >= beta)
+						{
+							numRegularTTHits++;
+							return cachedMove.Evaluation;
+						}
+					}
+					else
+					{
+						if ((cachedMove.EvaluationType == EvaluationType.Accurate || cachedMove.EvaluationType == EvaluationType.Upperbound) && cachedMove.Evaluation <= alpha)
+						{
+							numRegularTTHits++;
+							return cachedMove.Evaluation;
+						}
+					}
+				}
+
+				if (depth == 0)
+					return QuiescenceSearch(nodeType,snapShot,maxQuiescenceDepth,alpha,beta,pvMove);
+
+				snapShot.CalculateLegalMoves();
+				Move ttMove = new Move();
+				if (!tTable.LookupBoard(snapShot,ttMove) || ttMove.FieldNumberFrom < 0)
+					ttMove = null;
+
+				List<Move> orderedMoves = GetOrderedMoves(snapShot,false,ttMove,pvMove);
+
+				if (orderedMoves.Count == 0)
+					return (snapShot.EvaluateMaterial(fromWhosePerspective) >> 3) << 3;
+
+				int bestSoFar = nodeType == MAXNODE ? ALPHABETA_MINVAL : ALPHABETA_MAXVAL;
+				Move bestMove = null;
+
+				for (int i = 0; i < orderedMoves.Count; i++)
+				{
+					Move move = orderedMoves[i];
+					snapShot.PerformMove(move,true);
+					moveCounter++;
+					int moveScore = AlphaBeta(nodeType == MAXNODE ? MINNODE : MAXNODE,snapShot,depth - 1,alpha,beta,pvMove);
+					moveCounter--;
+					snapShot.Rollback(1);
+
+					if (nodeType == MAXNODE)
+					{
+						if (moveScore > bestSoFar)
+						{
+							bestSoFar = moveScore;
+							bestMove = move;
+							alpha = Math.Max(alpha,bestSoFar);
+							if (bestSoFar >= beta)
+							{
+								tTable.StoreSnapShot(snapShot,bestSoFar,EvaluationType.Lowerbound,depth,NextTimeStamp(),bestMove);
+								hTable.AddMove(snapShot.whoToMove,move);
+								numRegularCutoffs++;
+								return bestSoFar;
+							}
+						}
+					}
+					else
+					{
+						if (moveScore < bestSoFar)
+						{
+							bestSoFar = moveScore;
+							bestMove = move;
+							beta = Math.Min(beta,bestSoFar);
+							if (bestSoFar <= alpha)
+							{
+								tTable.StoreSnapShot(snapShot,bestSoFar,EvaluationType.Upperbound,depth,NextTimeStamp(),bestMove);
+								hTable.AddMove(snapShot.whoToMove,move);
+								numRegularCutoffs++;
+								return bestSoFar;
+							}
+						}
+					}
+				}
+
+				tTable.StoreSnapShot(snapShot,bestSoFar,EvaluationType.Accurate,depth,NextTimeStamp(),bestMove);
+				return bestSoFar;
+			}
+
+			private int QuiescenceSearch(bool nodeType, SnapShot snapShot, int depth, int alpha, int beta, Move pvMove)
+			{
+				numQuiescenceNodes++;
+
+				Move cachedMove = new Move();
+				if (tTable.LookupBoard(snapShot,cachedMove))
+				{
+					if (nodeType == MAXNODE)
+					{
+						if ((cachedMove.EvaluationType == EvaluationType.Accurate || cachedMove.EvaluationType == EvaluationType.Lowerbound) && cachedMove.Evaluation >= beta)
+						{
+							numQuiescenceTTHits++;
+							return cachedMove.Evaluation;
+						}
+					}
+					else
+					{
+						if ((cachedMove.EvaluationType == EvaluationType.Accurate || cachedMove.EvaluationType == EvaluationType.Upperbound) && cachedMove.Evaluation <= alpha)
+						{
+							numQuiescenceTTHits++;
+							return cachedMove.Evaluation;
+						}
+					}
+				}
+
+				int standPat = (snapShot.EvaluateMaterial(fromWhosePerspective) >> 3) << 3;
+				if (standPat > alpha)
+					alpha = standPat;
+				if (standPat >= beta)
+					return standPat;
+
+				snapShot.CalculateLegalMoves();
+				if (!snapShot.HitPossible || depth == 0)
+				{
+					tTable.StoreSnapShot(snapShot,standPat,EvaluationType.Accurate,depth,NextTimeStamp());
+					return standPat;
+				}
+
+				Move ttMove = new Move();
+				if (!tTable.LookupBoard(snapShot,ttMove) || ttMove.FieldNumberFrom < 0)
+					ttMove = null;
+
+				List<Move> orderedCaptures = GetOrderedMoves(snapShot,true,ttMove,pvMove);
+				if (orderedCaptures.Count == 0)
+				{
+					tTable.StoreSnapShot(snapShot,standPat,EvaluationType.Accurate,depth,NextTimeStamp());
+					return standPat;
+				}
+
+				int bestSoFar = standPat;
+				Move bestMove = null;
+
+				for (int i = 0; i < orderedCaptures.Count; i++)
+				{
+					Move move = orderedCaptures[i];
+					snapShot.PerformMove(move,true);
+					moveCounter++;
+					int moveScore = QuiescenceSearch(nodeType == MAXNODE ? MINNODE : MAXNODE,snapShot,depth - 1,alpha,beta,pvMove);
+					moveCounter--;
+					snapShot.Rollback(1);
+
+					if (nodeType == MAXNODE)
+					{
+						if (moveScore > bestSoFar)
+						{
+							bestSoFar = moveScore;
+							bestMove = move;
+							alpha = Math.Max(alpha,bestSoFar);
+							if (bestSoFar >= beta)
+							{
+								tTable.StoreSnapShot(snapShot,bestSoFar,EvaluationType.Lowerbound,depth,NextTimeStamp(),bestMove);
+								return bestSoFar;
+							}
+						}
+					}
+					else
+					{
+						if (moveScore < bestSoFar)
+						{
+							bestSoFar = moveScore;
+							bestMove = move;
+							beta = Math.Min(beta,bestSoFar);
+							if (bestSoFar <= alpha)
+							{
+								tTable.StoreSnapShot(snapShot,bestSoFar,EvaluationType.Upperbound,depth,NextTimeStamp(),bestMove);
+								return bestSoFar;
+							}
+						}
+					}
+				}
+
+				tTable.StoreSnapShot(snapShot,bestSoFar,EvaluationType.Accurate,depth,NextTimeStamp(),bestMove);
+
+				return bestSoFar;
+			}
+		}
+
 
 		// Data counters to evaluate pawn structure
 		private int[] columnOwnPawnCount = new int[8];
@@ -2718,6 +3144,92 @@ moveCounter--;
 		}
 
 		private SituationCode currentSituationCode = SituationCode.Normal;
+		public SituationCode CurrentSituationCode
+		{
+			get
+			{
+				return currentSituationCode;
+			}
+		}
+
+		private static string PieceToken(PieceType pieceType, Color pieceColor, bool useUnicode)
+		{
+			if (useUnicode)
+			{
+				byte piece = (byte)(((int)pieceType & (int)Mask.PieceType) | ((int)pieceColor & (int)Mask.Color) | (int)Mask.MovedFlag);
+				return PieceToUnicodeChar(piece).ToString();
+			}
+
+			switch (pieceType)
+			{
+				case PieceType.Pawn:
+					return "P";
+				case PieceType.Knight:
+					return "N";
+				case PieceType.Bishop:
+					return "B";
+				case PieceType.Rook:
+					return "R";
+				case PieceType.Queen:
+					return "Q";
+				default:
+					return "?";
+			}
+		}
+
+		private static void AppendCapturedPiece(StringBuilder sb, PieceType pieceType, Color pieceColor, int count, bool useUnicode)
+		{
+			if (count <= 0)
+				return;
+
+			sb.Append(PieceToken(pieceType, pieceColor, useUnicode)).Append('x').Append(count).Append(' ');
+		}
+
+		private static string BuildCapturedPiecesString(int pawns, int rooks, int knights, int bishops, int queens, Color capturedPieceColor, bool useUnicode)
+		{
+			StringBuilder sb = new StringBuilder();
+			AppendCapturedPiece(sb, PieceType.Queen, capturedPieceColor, queens, useUnicode);
+			AppendCapturedPiece(sb, PieceType.Rook, capturedPieceColor, rooks, useUnicode);
+			AppendCapturedPiece(sb, PieceType.Bishop, capturedPieceColor, bishops, useUnicode);
+			AppendCapturedPiece(sb, PieceType.Knight, capturedPieceColor, knights, useUnicode);
+			AppendCapturedPiece(sb, PieceType.Pawn, capturedPieceColor, pawns, useUnicode);
+
+			if (sb.Length == 0)
+				return "none";
+
+			return sb.ToString().TrimEnd();
+		}
+
+		internal static string BuildCapturedPiecesStringForTests(int pawns, int rooks, int knights, int bishops, int queens, Color capturedPieceColor, bool useUnicode)
+		{
+			return BuildCapturedPiecesString(pawns, rooks, knights, bishops, queens, capturedPieceColor, useUnicode);
+		}
+
+		public string GetCapturedPiecesSummary(bool useUnicode)
+		{
+			int capturedByWhitePawns = 8 - blackPawnsCount;
+			int capturedByWhiteRooks = 2 - blackRooksCount;
+			int capturedByWhiteKnights = 2 - blackKnightsCount;
+			int capturedByWhiteBishops = 2 - blackBishopsCount;
+			int capturedByWhiteQueens = 1 - blackQueensCount;
+
+			int capturedByBlackPawns = 8 - whitePawnsCount;
+			int capturedByBlackRooks = 2 - whiteRooksCount;
+			int capturedByBlackKnights = 2 - whiteKnightsCount;
+			int capturedByBlackBishops = 2 - whiteBishopsCount;
+			int capturedByBlackQueens = 1 - whiteQueensCount;
+
+			return "Captured by White: " + BuildCapturedPiecesString(capturedByWhitePawns, capturedByWhiteRooks, capturedByWhiteKnights, capturedByWhiteBishops, capturedByWhiteQueens, Color.Black, useUnicode)
+				+ " | Captured by Black: " + BuildCapturedPiecesString(capturedByBlackPawns, capturedByBlackRooks, capturedByBlackKnights, capturedByBlackBishops, capturedByBlackQueens, Color.White, useUnicode);
+		}
+
+		public string CapturedPiecesSummary
+		{
+			get
+			{
+				return GetCapturedPiecesSummary(false);
+			}
+		}
 
 		private int whitePiecesCount = 16;
 		private int blackPiecesCount = 16;
@@ -4516,15 +5028,23 @@ moveCounter--;
 		/// <param name="includeHistory">If true, appends the recent move history.</param>
 		/// <param name="historySteps">Maximum number of history entries to include when <paramref name="includeHistory"/> is true.</param>
 		/// <param name="whiteAtBottom">If true, renders from White's perspective; otherwise from Black's perspective.</param>
+		/// <param name="includeSnapshotHeader">If true, includes the snapshot title block.</param>
+		/// <param name="includeStatusLine">If true, includes the side-to-move and situation status line.</param>
+		/// <param name="includeLastMoveLine">If true, includes a single last-move line when history exists.</param>
 		/// <returns>A formatted board and game-state string for user-facing display.</returns>
-		public string ToUserFriendlyString(bool useUnicode = true, bool includeLegalMoves = true, bool includeHistory = false, int historySteps = 8, bool whiteAtBottom = true)
+		public string ToUserFriendlyString(bool useUnicode = true, bool includeLegalMoves = true, bool includeHistory = false, int historySteps = 8, bool whiteAtBottom = true, bool includeSnapshotHeader = true, bool includeStatusLine = true, bool includeLastMoveLine = true)
 		{
 			StringBuilder sb = new StringBuilder();
-			sb.AppendLine("tSHess Snapshot");
-			sb.AppendLine("-------------");
-			sb.AppendLine("To move: " + (whoToMove == Color.White ? "White" : "Black") + " | Status: " + currentSituationCode.ToString());
+			if (includeSnapshotHeader)
+			{
+				sb.AppendLine("tSHess Snapshot");
+				sb.AppendLine("-------------");
+			}
 
-			if (history != null && history.Count > 0)
+			if (includeStatusLine)
+				sb.AppendLine("To move: " + (whoToMove == Color.White ? "White" : "Black") + " | Status: " + currentSituationCode.ToString());
+
+			if (includeLastMoveLine && history != null && history.Count > 0)
 			{
 				try
 				{
@@ -4625,9 +5145,61 @@ moveCounter--;
 					historySteps = 1;
 				historySteps = (historySteps > history.Count ? history.Count : historySteps);
 				sb.AppendLine();
-				sb.AppendLine("History (last " + historySteps.ToString() + " of " + history.Count.ToString() + " steps):");
-				for (int i = history.Count-historySteps; i < history.Count; i++)
-					sb.AppendLine(history[i].ToString(true));
+				sb.AppendLine("History (last " + historySteps.ToString() + " of " + history.Count.ToString() + " plies):");
+				sb.AppendLine(GetHistorySanString(true, historySteps));
+			}
+
+			return sb.ToString();
+		}
+
+		public string ToGameOutputString(bool useUnicode = true, bool includeLegalMoves = true, bool includeHistory = false, int historySteps = 8, bool whiteAtBottom = true)
+		{
+			return ToUserFriendlyString(useUnicode, includeLegalMoves, includeHistory, historySteps, whiteAtBottom, false, false, false);
+		}
+
+		public string GetHistorySanString(bool includeMoveNumbers = true, int maxHalfMoves = -1)
+		{
+			if (history == null || history.Count == 0)
+				return "";
+
+			int startIndex = 0;
+			if (maxHalfMoves > 0 && maxHalfMoves < history.Count)
+				startIndex = history.Count - maxHalfMoves;
+
+			StringBuilder sb = new StringBuilder();
+			for (int i = startIndex; i < history.Count; i++)
+			{
+				Move move = history[i];
+				string san;
+				try
+				{
+					san = move.SnapShot.MoveToSan(move);
+				}
+				catch
+				{
+					san = move.ToString();
+				}
+
+				if (!includeMoveNumbers)
+				{
+					if (sb.Length > 0)
+						sb.Append(' ');
+					sb.Append(san);
+					continue;
+				}
+
+				int halfMoveFromStart = i - startIndex;
+				int moveNumber = (i / 2) + 1;
+				if ((halfMoveFromStart % 2) == 0)
+				{
+					if (sb.Length > 0)
+						sb.Append(' ');
+					sb.Append(moveNumber.ToString()).Append(". ").Append(san);
+				}
+				else
+				{
+					sb.Append(' ').Append(san);
+				}
 			}
 
 			return sb.ToString();
@@ -5466,6 +6038,23 @@ moveCounter--;
 					openings = null;
 			}
 			return MTDPicker.GetBestMove(this.Clone(),openings);
+		}
+
+		public Move GetBestMoveMTDv2(string openingBookFileName, OpeningBookFormat format)
+		{
+			OpeningBook openings = null;
+			openings = (OpeningBook)openingBooks[openingBookFileName];
+			if (openings == null)
+			{
+				bool bOK = false;
+				openings = new OpeningBook();
+				bOK = openings.Load(openingBookFileName, format);
+				if (bOK)
+					openingBooks[openingBookFileName] = openings;
+				else
+					openings = null;
+			}
+			return MTDPickerV2.GetBestMove(this.Clone(),openings);
 		}
 
 		//	}
