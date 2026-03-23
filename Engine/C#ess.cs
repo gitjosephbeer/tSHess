@@ -40,12 +40,19 @@ using System.Text;
 
 namespace tSHess.Engine
 {
+	/// <summary>
+	/// Represents the color/side of a chess player or piece.
+	/// Values are encoded to align with internal bit masks in board representation.
+	/// </summary>
 	public enum Color : int
 	{
 		White	= 0,
 		Black	= 8
 	}
 
+	/// <summary>
+	/// Describes how an evaluation value from search should be interpreted.
+	/// </summary>
 	public enum EvaluationType : int
 	{
 		Null		= -1,
@@ -54,6 +61,9 @@ namespace tSHess.Engine
 		Lowerbound	= 2
 	}
 
+	/// <summary>
+	/// Indicates the side associated with a move entry.
+	/// </summary>
 	public enum MoveType : int
 	{
 		Null		= -1,
@@ -61,18 +71,27 @@ namespace tSHess.Engine
 		Black		= Color.Black
 	}
 
+	/// <summary>
+	/// Represents whether a side is controlled by a human or the engine.
+	/// </summary>
 	public enum PlayerMode : int
 	{
 		Human		= 0,
 		Computer	= 1
 	}
 
+	/// <summary>
+	/// Supported opening book notation formats.
+	/// </summary>
 	public enum OpeningBookFormat : int
 	{
 		CoordinateNotation	= 0,
 		SanNotation			= 1
 	}
 
+	/// <summary>
+	/// Chess piece types used by the engine.
+	/// </summary>
 	public enum PieceType : int
 	{
 		None	= -1,
@@ -84,6 +103,9 @@ namespace tSHess.Engine
 		King	= 5
 	}
 
+	/// <summary>
+	/// Bit masks used for internal board-square byte encoding.
+	/// </summary>
 	public enum Mask : int
 	{
 		PieceType	= 7,
@@ -92,6 +114,9 @@ namespace tSHess.Engine
 		NullFlag	= 32
 	}
 
+	/// <summary>
+	/// Allowed promotion target piece types for pawn promotion.
+	/// </summary>
 	public enum PromotionPieceType : int
 	{
 		Queen	= PieceType.Queen,
@@ -100,6 +125,9 @@ namespace tSHess.Engine
 		Rook	= PieceType.Rook
 	}
 
+	/// <summary>
+	/// Tactical situation state of a side after a move.
+	/// </summary>
 	public enum SituationCode : int
 	{
 		Unknown		= -1,
@@ -109,6 +137,9 @@ namespace tSHess.Engine
 		Stalemate	= 3,
 	}
 
+	/// <summary>
+	/// Classifies a move by its special semantics (castling, en passant, promotion, etc.).
+	/// </summary>
 	public enum MoveCode : int
 	{
 		Unknown					= -1,
@@ -122,6 +153,9 @@ namespace tSHess.Engine
 		PromotePawnHittingPiece	= 7
 	}
 
+	/// <summary>
+	/// File coordinate (A..H) for board indexing helpers.
+	/// </summary>
 	public enum HorizontalCoordinateCode : int
 	{
 		HA	= 0,
@@ -134,6 +168,9 @@ namespace tSHess.Engine
 		HH	= 7
 	}
 
+	/// <summary>
+	/// Rank coordinate (1..8) for board indexing helpers.
+	/// </summary>
 	public enum VerticalCoordinateCode : int
 	{
 		V1	= 0,
@@ -146,6 +183,9 @@ namespace tSHess.Engine
 		V8	= 7
 	}
 
+	/// <summary>
+	/// Direction categories used in move generation.
+	/// </summary>
 	public enum MoveDirectionCode : int
 	{
 		Diagonal1	= 0,
@@ -158,6 +198,9 @@ namespace tSHess.Engine
 		Knight4		= 7
 	}
 
+	/// <summary>
+	/// Static utility and lookup helper for board coordinates, piece names, values, and direction steps.
+	/// </summary>
 	public class Helper
 	{
 		public static int[] moveDirectionCode2Step = new int[] { 9, 7, 8, 1, 6, 10, 15, 17 };
@@ -215,36 +258,71 @@ namespace tSHess.Engine
 				return Color.White;
 		}
 
+		/// <summary>
+		/// Gets the display name of a piece type (for example, <c>Pawn</c>).
+		/// </summary>
+		/// <param name="pieceType">Piece type to convert.</param>
+		/// <returns>Long piece name string.</returns>
 		public static string PieceType2LongName(PieceType pieceType)
 		{
 			return pieceType2LongName[(int)pieceType];
 		}
 
+		/// <summary>
+		/// Gets the SAN-style short name of a piece type (for example, <c>N</c> for knight).
+		/// </summary>
+		/// <param name="pieceType">Piece type to convert.</param>
+		/// <returns>Short piece name string.</returns>
 		public static string PieceType2ShortName(PieceType pieceType)
 		{
 			return pieceType2ShortName[(int)pieceType];
 		}
 
+		/// <summary>
+		/// Converts a move direction code into the corresponding board-step delta.
+		/// </summary>
+		/// <param name="c">Direction code.</param>
+		/// <returns>Square index delta used in internal 0..63 board indexing.</returns>
 		public static int MoveDirectionCode2Step(MoveDirectionCode c)
 		{
 			return moveDirectionCode2Step[(int)c];
 		}
 
+		/// <summary>
+		/// Gets the board square color (light/dark) for a field index.
+		/// </summary>
+		/// <param name="f">Board field number (0..63).</param>
+		/// <returns>Square color as <see cref="Color.White"/> or <see cref="Color.Black"/>.</returns>
 		public static Color FieldNumber2Color(int f)
 		{
 			return fieldNumber2Color[f];
 		}
 
+		/// <summary>
+		/// Gets the file component (A..H) for a board field index.
+		/// </summary>
+		/// <param name="f">Board field number (0..63).</param>
+		/// <returns>Horizontal/file coordinate code.</returns>
 		public static HorizontalCoordinateCode FieldNumber2HorizontalCoordinateCode(int f)
 		{
 			return fieldNumber2HorizontalCoordinateCode[f];
 		}
 
+		/// <summary>
+		/// Gets the rank component (1..8) for a board field index.
+		/// </summary>
+		/// <param name="f">Board field number (0..63).</param>
+		/// <returns>Vertical/rank coordinate code.</returns>
 		public static VerticalCoordinateCode FieldNumber2VerticalCoordinateCode(int f)
 		{
 			return fieldNumber2VerticalCoordinateCode[f];
 		}
 
+		/// <summary>
+		/// Converts a board field index to coordinate text (for example, <c>A1</c>).
+		/// </summary>
+		/// <param name="f">Board field number (0..63).</param>
+		/// <returns>Coordinate string in algebraic format.</returns>
 		public static string FieldNumber2String(int f)
 		{
 			return ((char)(fieldNumber2HorizontalCoordinateCode[f] + 'A')).ToString()+((char)(fieldNumber2VerticalCoordinateCode[f] + '1')).ToString();
@@ -292,6 +370,12 @@ namespace tSHess.Engine
 			return (VerticalCoordinateCode)(c - '1');
 		}
 
+		/// <summary>
+		/// Converts horizontal/vertical coordinate codes into algebraic square text (for example, <c>E4</c>).
+		/// </summary>
+		/// <param name="hc">Horizontal/file coordinate.</param>
+		/// <param name="vc">Vertical/rank coordinate.</param>
+		/// <returns>Square text in algebraic format.</returns>
 		public static string Coordinates2String(HorizontalCoordinateCode hc, VerticalCoordinateCode vc)
 		{
 			return ((char)(hc + 'A')).ToString()+((char)(vc + '1')).ToString();
@@ -857,6 +941,16 @@ namespace tSHess.Engine
 			return StoreSnapShot(snapShot,evaluation,evaluationType,searchDepth,timeStamp,null);
 		}
 
+		/// <summary>
+		/// Stores an evaluation and optional best move for the given snapshot in the transposition table.
+		/// </summary>
+		/// <param name="snapShot">Position signature to store.</param>
+		/// <param name="evaluation">Evaluation score.</param>
+		/// <param name="evaluationType">Bound accuracy type of the score.</param>
+		/// <param name="searchDepth">Depth at which the score was obtained.</param>
+		/// <param name="timeStamp">Search timestamp used for replacement decisions.</param>
+		/// <param name="bestMove">Best move associated with the evaluation, if available.</param>
+		/// <returns><c>true</c> when the call completes (including when the existing entry is kept).</returns>
 		public bool StoreSnapShot(SnapShot snapShot, int evaluation, EvaluationType evaluationType, int searchDepth, int timeStamp, Move bestMove)
 		{
 			int key = Math.Abs(snapShot.GetHashCode() % TABLE_SIZE);
@@ -888,6 +982,20 @@ namespace tSHess.Engine
 	} // TranspositionTable
 
 
+	/// <summary>
+	/// Global move-history heuristic table used for move ordering during search.
+	/// 
+	/// Tracks how often a move from a specific square to another square causes
+	/// successful alpha-beta cutoffs. Moves with higher scores are prioritized in future
+	/// searches to improve pruning effectiveness.
+	/// 
+	/// Storage layout:
+	/// - history[colorIndex, fromSquare, toSquare]
+	/// - colorIndex: 0 = White, 1 = Black
+	/// - squares: 0..63 board indices
+	/// 
+	/// Implemented as singleton so all search instances share learning across moves.
+	/// </summary>
 	public class MoveHistoryTable
 	{
 		private int[,,] history = new int[2,64,64];
@@ -900,9 +1008,19 @@ namespace tSHess.Engine
 			singleInstance = new MoveHistoryTable();
 		}
 
+		/// <summary>
+		/// Comparer that sorts moves by move-history heuristic score for a specific side.
+		/// Higher history scores are ordered first.
+		/// </summary>
 		public class MoveComparer : IComparer
 		{
 			private int colorIndex = 0;
+			/// <summary>
+			/// Compares two moves by history score.
+			/// </summary>
+			/// <param name="x">First move.</param>
+			/// <param name="y">Second move.</param>
+			/// <returns>Negative when <paramref name="x"/> should come first; positive otherwise.</returns>
 			public int Compare(object x, object y)
 			{
 				Move mx = x as Move;
@@ -912,6 +1030,10 @@ namespace tSHess.Engine
 				else
 					return 1;
 			}
+			/// <summary>
+			/// Initializes a comparer for the specified side.
+			/// </summary>
+			/// <param name="color">Side whose history scores should be used.</param>
 			public MoveComparer(Color color)
 			{
 				if (color == Color.White)
@@ -946,6 +1068,12 @@ namespace tSHess.Engine
 				history[1,move.FieldNumberFrom,move.FieldNumberTo]++;
 		}
 
+		/// <summary>
+		/// Gets the accumulated move-history score for a move and side.
+		/// </summary>
+		/// <param name="color">Side to query.</param>
+		/// <param name="move">Move to query.</param>
+		/// <returns>History score; returns 0 when move is null.</returns>
 		public int GetScore(Color color, Move move)
 		{
 			if (move == null)
@@ -972,6 +1100,44 @@ namespace tSHess.Engine
 	} // MoveHistoryTable
 
 
+	/// <summary>
+	/// Represents a single chess move and associated game-state information.
+	/// 
+	/// A Move encapsulates:
+	/// - Source and destination squares (FieldNumberFrom/To, 0-63)
+	/// - Piece being moved and piece captured (if any)
+	/// - Position evaluation and search depth (from transposition table or search)
+	/// - Game-state snapshots (current position and prior position via SnapShot)
+	/// - Move type information (regular move, castling, promotion, etc.)
+	/// - Board situation before/after the move (for move legality checks)
+	/// 
+	/// Usage Contexts:
+	/// 1. Move Generation: Moves in a legal move list with FieldNumber fields set
+	/// 2. Search History: Moves in history with SnapShot pointing to position before move
+	/// 3. Transposition Table Entry: Moves with Evaluation, EvaluationType, SearchDepth set
+	/// 4. Principal Variation: Moves returned from search with Evaluation field indicating value
+	/// 
+	/// Comparison: Two moves are equal if they have the same from/to fields (piece/capture don't matter for move identity).
+	/// ToString: Returns coordinate notation like "A2-A4".
+	/// Clone: Creates a deep copy including any associated SnapShot.
+	/// </summary>
+	/// <summary>
+	/// Represents a single chess move, including source/target squares, move metadata,
+	/// tactical context, and search evaluation results.
+	/// 
+	/// A Move object serves two roles:
+	/// 1. Game move representation (from/to, piece type, captures, SAN context)
+	/// 2. Search result container (evaluation, bound type, search depth)
+	/// 
+	/// Core fields:
+	/// - FieldNumberFrom / FieldNumberTo: Source and destination square indices (0..63)
+	/// - PieceType / PieceHit: Moving and captured piece types
+	/// - MoveCode: Special move classification (castling, promotion, resign, etc.)
+	/// - OwnSituationCode / OpponentSituationCode: Tactical state (check/checkmate/stalemate)
+	/// - Evaluation / EvaluationType / SearchDepth: Search metadata for transposition table
+	/// - SnapShot: Optional reference to pre-move position for history/reconstruction
+	/// - PromotionPieceType: Promotion target for pawn promotions (if applicable)
+	/// </summary>
 	public class Move
 	{
 		public int FieldNumberFrom = -1;
@@ -1096,11 +1262,25 @@ namespace tSHess.Engine
 
 	} // Move
 	
+	/// <summary>
+	/// Collection of <see cref="Move"/> objects with optional duplicate suppression.
+	/// 
+	/// Provides a chess-specific move list abstraction on top of ArrayList,
+	/// including utility methods for cloning, sorting, SAN conversion, and filtering.
+	/// 
+	/// Key behavior:
+	/// - Duplicate suppression can be enabled/disabled via SuppressDuplicates
+	/// - Supports ICollection interface for interoperability
+	/// - Preserves insertion order unless explicitly sorted
+	/// </summary>
 	public class MoveList : ICollection
 	{
 		private ArrayList moves = new ArrayList();
 
 		private bool suppressDuplicates = true;
+		/// <summary>
+		/// Gets or sets whether duplicate moves are ignored when adding to the list.
+		/// </summary>
 		public bool SuppressDuplicates
 		{
 			get
@@ -1157,6 +1337,9 @@ namespace tSHess.Engine
 			return moves.GetEnumerator();
 		}
 
+		/// <summary>
+		/// Gets whether access to the underlying collection is synchronized (thread-safe).
+		/// </summary>
 		public virtual bool IsSynchronized
 		{
 			get
@@ -1165,6 +1348,9 @@ namespace tSHess.Engine
 			}
 		}
 
+		/// <summary>
+		/// Gets an object that can be used to synchronize access to the collection.
+		/// </summary>
 		public virtual object SyncRoot
 		{
 			get
@@ -1298,6 +1484,10 @@ namespace tSHess.Engine
 			return ml;
 		}
 
+		/// <summary>
+		/// Returns coordinate-notation text for all moves, separated by semicolons.
+		/// </summary>
+		/// <returns>Formatted coordinate move list string.</returns>
 		public override string ToString()
 		{
 			string retVal = "";
@@ -1344,11 +1534,22 @@ namespace tSHess.Engine
 	} // MoveList
 
 
+	/// <summary>
+	/// Delegate for notifications when a piece is captured.
+	/// </summary>
+	/// <param name="sender">Event source.</param>
+	/// <param name="e">Capture event data.</param>
 	public delegate void PieceHitEventHandler(object sender, PieceHitEventArgs e);
 	
+	/// <summary>
+	/// Event data for a captured piece notification.
+	/// </summary>
 	public class PieceHitEventArgs : EventArgs
 	{
 		private PieceType pieceHit = PieceType.None;
+		/// <summary>
+		/// Gets the type of piece that was captured.
+		/// </summary>
 		public PieceType PieceHit
 		{
 			get
@@ -1356,6 +1557,10 @@ namespace tSHess.Engine
 				return pieceHit;
 			}
 		}
+		/// <summary>
+		/// Initializes capture event data.
+		/// </summary>
+		/// <param name="pieceHit">Captured piece type.</param>
 		public PieceHitEventArgs(PieceType pieceHit)
 		{
 			if (pieceHit == PieceType.None)
@@ -1364,26 +1569,75 @@ namespace tSHess.Engine
 		}
 	}
 
+	/// <summary>
+	/// Delegate for pawn-promotion selection callbacks.
+	/// </summary>
+	/// <param name="sender">Event source.</param>
+	/// <param name="e">Promotion selection event data.</param>
 	public delegate void PromotePawnEventHandler(object sender, PromotePawnEventArgs e);
 	
+	/// <summary>
+	/// Event data for pawn promotion requests.
+	/// </summary>
 	public class PromotePawnEventArgs : EventArgs
 	{
+		/// <summary>
+		/// Gets or sets the selected promotion piece. Defaults to queen.
+		/// </summary>
 		public PromotionPieceType PromoteTo = PromotionPieceType.Queen;
 	}
 
+	/// <summary>
+	/// Delegate for check-state notifications.
+	/// </summary>
+	/// <param name="sender">Event source.</param>
+	/// <param name="e">Check event data.</param>
 	public delegate void CheckEventHandler(object sender, CheckEventArgs e);
 	
+	/// <summary>
+	/// Event data for check notifications.
+	/// </summary>
 	public class CheckEventArgs : EventArgs
 	{
 	}
 
+	/// <summary>
+	/// Delegate for game-over notifications.
+	/// </summary>
+	/// <param name="sender">Event source.</param>
+	/// <param name="e">Game-over event data.</param>
 	public delegate void GameOverEventHandler(object sender, GameOverEventArgs e);
 	
+	/// <summary>
+	/// Event data for game-over notifications.
+	/// </summary>
 	public class GameOverEventArgs : EventArgs
 	{
 	}
 
 
+	/// <summary>
+	/// Represents a single chess position (board state) snapshot, including piece placement,
+	/// side to move, castling rights, legal moves, history, and evaluation caches.
+	/// 
+	/// SnapShot is the core data structure for board representation and manipulation.
+	/// It maintains both the current position and a linked history of moves that led to this position,
+	/// enabling move rollback, repetition detection, and game-state analysis.
+	/// 
+	/// Key Features:
+	/// - Piece placement via situation[] byte array (piece type and color encoded)
+	/// - King position caching for efficient move legality checks
+	/// - Legal move generation and caching
+	/// - Move history with bidirectional linking (via Move.SnapShot)
+	/// - Hashing via Zobrist keys (GetHashCode, GetHashLockCode)
+	/// - Move normalization keys for repetition detection (GetRepetitionHashCode, GetRepetitionLockCode)
+	/// - Complete game-phase evaluation (material + positional + endgame heuristics)
+	/// - Draw detection (insufficient material, threefold repetition, fifty-move rule)
+	/// - FEN position import/export for test setup (FromFen)
+	/// 
+	/// All positions are immutable after creation; modifications use PerformMove and Rollback
+	/// to maintain history and enable efficient undo.
+	/// </summary>
 	public class SnapShot
 	{
 		private static BestMovePicker MTDPicker = new MTD();
@@ -1391,7 +1645,27 @@ namespace tSHess.Engine
 //		private static BestMovePicker AlphaBetaPicker = new AlphaBeta();
 		private static Hashtable openingBooks = new Hashtable();
 
-		public abstract class BestMovePicker
+		/// <summary>
+	/// Abstract base class for chess move selection algorithms (engines).
+	/// 
+	/// Defines the common interface and shared infrastructure for search engines.
+	/// Subclasses implement concrete search strategies (e.g., MTDv2, simple alpha-beta, minimax).
+	/// 
+	/// Shared Components:
+	/// - TranspositionTable (tTable): Caches evaluated positions to avoid redundant computation
+	/// - MoveHistoryTable (hTable): Tracks move success patterns for move ordering heuristics
+	/// - Alpha-beta search constants and boundaries
+	/// - Search statistics (nodes, cutoffs, transposition table hits)
+	/// - Abstract GetBestMove method for subclass implementation
+	/// 
+	/// Transposition Table: Stores board positions with their evaluated scores, search depth,
+	/// and bound types (exact, lower bound, upper bound) to enable move ordering and significant
+	/// search pruning via cutoff detection.
+	/// 
+	/// Move History: Records how often each move at each position leads to cutoffs,
+	/// allowing engines to prioritize promising moves in future searches.
+	/// </summary>
+	public abstract class BestMovePicker
 		{
 			// A transposition table for this object
 			protected TranspositionTable tTable = new TranspositionTable();
@@ -1437,7 +1711,9 @@ namespace tSHess.Engine
 			// its transposition table
 			protected int moveCounter = 0;
 
-			// Construction
+			/// <summary>
+			/// Initializes a new move picker base instance with shared search infrastructure.
+			/// </summary>
 			public BestMovePicker()
 			{
 				//			Evaluator = new jcBoardEvaluator();
@@ -1606,6 +1882,18 @@ moveCounter--;
 			// This is necesary because the evaluation function can only be applied to
 			// "quiet" positions where the tactical situation (i.e., material balance) is
 			// unlikely to change in the near future.
+			/// <summary>
+			/// Performs quiescence search from the given node.
+			/// 
+			/// This base implementation is used by legacy engines; it extends search at leaf nodes
+			/// by exploring tactical continuations (captures) to reduce horizon effects.
+			/// </summary>
+			/// <param name="nodeType">Node type: <c>MAXNODE</c> or <c>MINNODE</c>.</param>
+			/// <param name="snapShot">Current board position.</param>
+			/// <param name="depth">Remaining quiescence depth.</param>
+			/// <param name="alpha">Alpha lower bound.</param>
+			/// <param name="beta">Beta upper bound.</param>
+			/// <returns>Quiescence evaluation score.</returns>
 			public int QuiescenceSearch(bool nodeType, SnapShot snapShot, int depth, int alpha, int beta)
 			{
 				Move move = new Move();
@@ -1766,6 +2054,12 @@ moveCounter--;
 			}
 
 			// Each picker class needs some way of picking a move!
+			/// <summary>
+			/// Selects the best move for the current side to move.
+			/// </summary>
+			/// <param name="snapShot">Position to evaluate.</param>
+			/// <param name="openings">Optional opening book to query before search.</param>
+			/// <returns>Best move according to the concrete engine implementation.</returns>
 			public abstract Move GetBestMove(SnapShot snapShot, OpeningBook openings);
 
 		} // BestMovePicker
@@ -1895,9 +2189,15 @@ moveCounter--;
 		}
 */
 
+		/// <summary>
+		/// Legacy MTD(f) search engine implementation kept for comparison/backward compatibility.
+		/// </summary>
 		public class MTD : BestMovePicker
 		{
 			// A measure of the effort we are willing to expend on search
+			/// <summary>
+			/// Gets or sets the maximum quiescence search depth for the legacy MTD engine.
+			/// </summary>
 			public int MaxQuiescenceDepth
 			{
 				get
@@ -1936,6 +2236,9 @@ moveCounter--;
 				}
 			}
 
+			/// <summary>
+			/// Initializes a legacy MTD search engine instance.
+			/// </summary>
 			public MTD() : base()
 			{
 			}
@@ -2146,25 +2449,73 @@ moveCounter--;
 			}
 		}
 
-		public class MTDv2 : BestMovePicker
+		/// <summary>
+	/// MTDv2 (Memory-enhanced Test Driver with 2 calls per iteration) is an iterative-deepening MTD(f) search engine.
+	/// 
+	/// This engine uses the MTD(f) algorithm (also known as Conspiracy Number Search) which performs zero-width
+	/// alpha-beta searches with iteratively refined upper and lower bounds to narrow the search window. This approach
+	/// can be more efficient than standard alpha-beta in finding the best move, as it exploits transposition table
+	/// results more effectively.
+	/// 
+	/// Key features:
+	/// - Iterative deepening from depth 2 to maxIterationDepth (default 15), incrementing by 2 each iteration
+	/// - MTD(f) zero-width search with alpha-beta refinement
+	/// - Full alpha-beta search at the root level (UnrolledAlphaBeta)
+	/// - Recursive alpha-beta search with transposition table cutoffs
+	/// - Quiescence search for tactical positions (captures and checks only)
+	/// - Complete game-phase evaluation with endgame heuristics
+	/// - Draw detection (insufficient material, threefold repetition, fifty-move rule)
+	/// - Move ordering via transposition table, principal variation, and history heuristic
+	/// 
+	/// Search Pipeline: Iterative Deepening → MTD(f) → UnrolledAlphaBeta → AlphaBeta → QuiescenceSearch → Terminal Evaluation
+	/// </summary>
+	public class MTDv2 : BestMovePicker
 		{
+			/// <summary>
+			/// If true, outputs search progress information to console (depth, score, node count).
+			/// </summary>
 			public bool Verbose = false;
+			
 			private int timeStampCounter = 0;
+			
+			/// <summary>
+			/// Maximum search depth for each iteration. Search continues iteratively
+			/// from depth 2 to this value (in steps of 2) until time/node limits are reached.
+			/// Default: 15 (approximately 8 iterations from d=2 to d=14).
+			/// </summary>
 			private int maxIterationDepth = 15;
+			
+			/// <summary>
+			/// Maximum total nodes (regular + quiescence) before search terminates.
+			/// Includes both regular alpha-beta nodes and quiescence search nodes.
+			/// Default: 50000 nodes.
+			/// </summary>
 			private int maxSearchSize = 50000;
 
+			/// <summary>
+			/// Gets or sets the maximum search depth.
+			/// Search runs iteratively from depth 2, incrementing by 2 until this limit is reached.
+			/// </summary>
 			public int MaxIterationDepth
 			{
 				get { return maxIterationDepth; }
 				set { maxIterationDepth = value; }
 			}
 
+			/// <summary>
+			/// Gets or sets the maximum search size (total number of nodes across all search layers).
+			/// Search terminates when either maxIterationDepth iterations complete or total nodes exceed this limit.
+			/// </summary>
 			public int MaxSearchSize
 			{
 				get { return maxSearchSize; }
 				set { maxSearchSize = value; }
 			}
-
+			/// <summary>
+			/// Generates the next unique timestamp for transposition table entries.
+			/// Used to manage aging of entries in the transposition table.
+			/// </summary>
+			/// <returns>A unique timestamp value (monotonically increasing).</returns>
 			private int NextTimeStamp()
 			{
 				unchecked
@@ -2176,6 +2527,13 @@ moveCounter--;
 				}
 			}
 
+			/// <summary>
+			/// Checks if two moves represent the same source and destination squares.
+			/// Handles null moves gracefully.
+			/// </summary>
+			/// <param name="a">First move to compare.</param>
+			/// <param name="b">Second move to compare.</param>
+			/// <returns>True if both moves have identical from/to field numbers; false if either is null or different.</returns>
 			private bool IsSameMove(Move a, Move b)
 			{
 				if (a == null || b == null)
@@ -2183,6 +2541,68 @@ moveCounter--;
 				return a.FieldNumberFrom == b.FieldNumberFrom && a.FieldNumberTo == b.FieldNumberTo;
 			}
 
+			/// <summary>
+			/// Evaluates positions with no legal moves (checkmate or stalemate).
+			/// 
+			/// Checkmate: Side to move is in check and has no legal moves.
+			/// Returns negative values (losing) for MAXNODE (side to move loses)
+			/// and positive values (winning) for MINNODE (side to move wins from opponent's perspective).
+			/// Values increase by depth to prefer faster mates.
+			/// 
+			/// Stalemate: Side to move is not in check and has no legal moves.
+			/// Returns 0 (draw evaluation).
+			/// </summary>
+			/// <param name="nodeType">MAXNODE for nodes where computer is to move; MINNODE for opponent.</param>
+			/// <param name="snapShot">Current board position.</param>
+			/// <param name="depth">Current search depth (used to score faster mates higher).</param>
+			/// <returns>
+			/// Checkmate: ALPHABETA_MINVAL + depth (negative for MAXNODE), or ALPHABETA_MAXVAL - depth (positive for MINNODE).
+			/// Stalemate: 0.
+			/// </returns>
+			private int EvaluateNoLegalMoves(bool nodeType, SnapShot snapShot, int depth)
+			{
+				int ownKingField = snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField;
+				bool inCheck = snapShot.IsFieldChecked(ownKingField)
+					|| (snapShot.history != null
+					&& snapShot.history.Count > 0
+					&& snapShot.history[snapShot.history.Count-1].OpponentSituationCode == SituationCode.Check);
+
+				if (!inCheck)
+					return 0;
+
+				if (nodeType == MAXNODE)
+					return ALPHABETA_MINVAL + depth;
+
+				return ALPHABETA_MAXVAL - depth;
+			}
+
+			/// <summary>
+			/// Checks if a position is drawn by any rule (insufficient material, threefold repetition, or fifty-move rule).
+			/// Used to short-circuit search and return 0 evaluation for drawn positions.
+			/// </summary>
+			/// <param name="snapShot">Current board position to evaluate.</param>
+			/// <returns>True if the position is drawn by any applicable rule; false otherwise.</returns>
+			private bool IsDrawnPosition(SnapShot snapShot)
+			{
+				return snapShot.IsDrawByInsufficientMaterial() || snapShot.IsDrawByRepetition() || snapShot.IsDrawByFiftyMoveRule();
+			}
+
+			/// <summary>
+			/// Calculates move ordering score for move ordering heuristic.
+			/// Higher scores should be searched first (best move first) to maximize alpha-beta pruning.
+			/// 
+			/// Prioritizes moves in this order:
+			/// 1. Transposition table move (best known move from previous search)
+			/// 2. Principal variation move (from iterative deepening)
+			/// 3. Captures ordered by MVV/LVA (Most Valuable Victim / Least Valuable Attacker)
+			/// 4. Non-capture moves from killer move / history table
+			/// </summary>
+			/// <param name="snapShot">Current position for context.</param>
+			/// <param name="move">Move to score.</param>
+			/// <param name="ttMove">Best move from transposition table (if any).</param>
+			/// <param name="pvMove">Principal variation move from iterative deepening (if any).</param>
+			/// <param name="capturesOnly">If true, only score captures (ignore non-captures).</param>
+			/// <returns>Score for move ordering (higher = better).</returns>
 			private int GetMoveOrderingScore(SnapShot snapShot, Move move, Move ttMove, Move pvMove, bool capturesOnly)
 			{
 				int score = hTable.GetScore(snapShot.whoToMove,move);
@@ -2203,6 +2623,18 @@ moveCounter--;
 				return score;
 			}
 
+			/// <summary>
+			/// Generates a sorted list of legal moves for the given position.
+			/// Moves are sorted by move ordering score to improve alpha-beta pruning efficiency.
+			/// 
+			/// If capturesOnly=false, includes all legal moves.
+			/// If capturesOnly=true, includes only capturing moves (used in quiescence search).
+			/// </summary>
+			/// <param name="snapShot">Current board position.</param>
+			/// <param name="capturesOnly">If true, return only capturing moves; if false, return all legal moves.</param>
+			/// <param name="ttMove">Transposition table move (searched first if present).</param>
+			/// <param name="pvMove">Principal variation move (searched early for refutation).</param>
+			/// <returns>List of legal moves sorted by estimated value (best-first order).</returns>
 			private List<Move> GetOrderedMoves(SnapShot snapShot, bool capturesOnly, Move ttMove, Move pvMove)
 			{
 				List<Move> ordered = new List<Move>(snapShot.legalMoves.Count);
@@ -2223,6 +2655,28 @@ moveCounter--;
 				return ordered;
 			}
 
+			/// <summary>
+			/// Finds the best move for the given position using iterative deepening MTD(f) search.
+			/// 
+			/// Algorithm Overview:
+			/// 1. Checks opening book for known moves (if available)
+			/// 2. Performs iterative deepening with incrementing depths (2, 4, 6, ..., maxIterationDepth)
+			/// 3. For each depth, uses MTD(f) to refine the evaluation with zero-width alpha-beta searches
+			/// 4. Returns the best move found before depth/node limits are exceeded
+			/// 5. Falls back to depth-2 search if all iterations fail
+			/// 
+			/// Search terminates when either:
+			/// - Maximum iteration depth is reached, OR
+			/// - Total nodes (regular + quiescence) exceeds maxSearchSize
+			/// 
+			/// Transposition table is cleared at depth >= 12 to manage memory and reduce stale entries.
+			/// </summary>
+			/// <param name="snapShot">Current board position to analyze.</param>
+			/// <param name="openings">Opening book for move lookup; can be null.</param>
+			/// <returns>
+			/// The best move found by search, with Evaluation field set to the estimated position value.
+			/// Returns a king move to self if no legal moves exist (resign indicator).
+			/// </returns>
 			public override Move GetBestMove(SnapShot snapShot, OpeningBook openings)
 			{
 				numRegularNodes = 0;
@@ -2275,6 +2729,30 @@ moveCounter--;
 				return bestMove;
 			}
 
+			/// <summary>
+			/// MTD(f) - Memory-enhanced Test Driver with f parameter.
+			/// 
+			/// Implements zero-width alpha-beta search with binary search refinement.
+			/// 
+			/// Algorithm:
+			/// 1. Starts with firstGuess evaluation as initial estimate
+			/// 2. Performs zero-width alpha-beta searches (alpha = beta - 1) iteratively
+			/// 3. If evaluation is lower than beta, narrows upper bound (searches for lower values)
+			/// 4. If evaluation is higher/equal to beta, narrows lower bound (searches for higher values)
+			/// 5. Converges when lower bound equals upper bound (found exact score, or proved bounds)
+			/// 
+			/// Advantages over standard alpha-beta with wider window:
+			/// - Exploits transposition table more effectively (zero-width searches create consistent bounds)
+			/// - Can be faster overall despite multiple searches, especially with good move ordering
+			/// 
+			/// Transposition table is critical for efficiency - reuses previous search results
+			/// across iterations to avoid redundant computation.
+			/// </summary>
+			/// <param name="snapShot">Position to evaluate.</param>
+			/// <param name="firstGuess">Initial estimate of position value (triggers lower or upper bound search).</param>
+			/// <param name="depth">Target search depth (passed to UnrolledAlphaBeta).</param>
+			/// <param name="pvMove">Principal variation move for move ordering.</param>
+			/// <returns>Best move found with Evaluation set to the converged score.</returns>
 			private Move MTD_f(SnapShot snapShot, int firstGuess, int depth, Move pvMove)
 			{
 				int upperBound = ALPHABETA_MAXVAL;
@@ -2302,6 +2780,30 @@ moveCounter--;
 				return bestMove;
 			}
 
+			/// <summary>
+			/// Root-level alpha-beta search at the top of the search tree.
+			/// 
+			/// Expands all legal moves from the current position and searches each one
+			/// using the recursive AlphaBeta method. Unlike AlphaBeta, this returns a Move object
+			/// (not just an evaluation) and stores the best move with its evaluation for return
+			/// to the caller.
+			/// 
+			/// Includes:
+			/// - Transposition table lookup for potential move hints
+			/// - Move ordering via transposition table, PV moves, and history heuristics
+			/// - Terminal node detection (checkmate/stalemate evaluation)
+			/// - Alpha-beta pruning to eliminate branches that cannot improve the result
+			/// - Transposition table storage for future searches
+			/// 
+			/// This is the "unrolled" version because it iterates through moves explicitly
+			/// rather than through recursive calls, enabling better move tracking at the root.
+			/// </summary>
+			/// <param name="snapShot">Current position.</param>
+			/// <param name="depth">Search depth (decremented by 1 for each recursive call).</param>
+			/// <param name="alpha">Lower bound on acceptable values (maximizing player's worst case).</param>
+			/// <param name="beta">Upper bound on acceptable values (minimizing player's worst case).</param>
+			/// <param name="pvMove">Principal variation move for move ordering (from iterative deepening).</param>
+			/// <returns>Best move found with Evaluation set to the search result.</returns>
 			private Move UnrolledAlphaBeta(SnapShot snapShot, int depth, int alpha, int beta, Move pvMove)
 			{
 				snapShot.CalculateLegalMoves();
@@ -2311,6 +2813,16 @@ moveCounter--;
 					ttMove = null;
 
 				List<Move> orderedMoves = GetOrderedMoves(snapShot,false,ttMove,pvMove);
+				if (orderedMoves.Count == 0)
+				{
+					int terminal = EvaluateNoLegalMoves(MAXNODE,snapShot,depth);
+					Move noMove = new Move(snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField,snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField);
+					noMove.PieceType = PieceType.King;
+					noMove.MoveCode = MoveCode.Resign;
+					noMove.Evaluation = terminal;
+					tTable.StoreSnapShot(snapShot,terminal,EvaluationType.Accurate,depth,NextTimeStamp(),noMove);
+					return noMove;
+				}
 
 				int bestSoFar = ALPHABETA_MINVAL;
 				Move bestMove = null;
@@ -2354,11 +2866,43 @@ moveCounter--;
 				return bestMove;
 			}
 
+			/// <summary>
+			/// Recursive alpha-beta minimax search with transposition table integration.
+			/// 
+			/// Core minimax algorithm with alpha-beta pruning to evaluate positions and determine
+			/// the best move for either side. Alternates between MAXNODE (computer to move, maximizing)
+			/// and MINNODE (opponent to move, minimizing).
+			/// 
+			/// Search Process:
+			/// 1. Increments regular node counter
+			/// 2. Checks for drawn positions (insufficient material, repetition, fifty-move rule)
+			/// 3. Validates transposition table cutoff opportunities
+			/// 4. At depth=0, delegates to quiescence search for tactical continuation
+			/// 5. Evaluates all legal moves, pruning branches with beta cutoffs
+			/// 6. Stores results in transposition table with bounds (exact, lower, or upper)
+			/// 
+			/// Alpha-Beta Pruning:
+			/// - Alpha: best value found so far for maximizing player (lower bound)
+			/// - Beta: upper bound on position value (if exceeded, this branch is refuted)
+			/// - Cutoff occurs when alpha >= beta (pruning effective)
+			/// 
+			/// Terminal nodes (checkmate/stalemate) are evaluated by EvaluateNoLegalMoves,
+			/// which handles the distinction between mate and stalemate.
+			/// </summary>
+			/// <param name="nodeType">MAXNODE (computer to move) or MINNODE (opponent to move).</param>
+			/// <param name="snapShot">Current board position.</param>
+			/// <param name="depth">Remaining search depth. Depth=0 triggers quiescence search.</param>
+			/// <param name="alpha">Lower bound: best value found for maximizing player so far.</param>
+			/// <param name="beta">Upper bound: refutation value for this node.</param>
+			/// <param name="pvMove">Principal variation move for move ordering.</param>
+			/// <returns>Evaluated score of the position (from maximizing player's perspective).</returns>
 			private int AlphaBeta(bool nodeType, SnapShot snapShot, int depth, int alpha, int beta, Move pvMove)
 			{
 				numRegularNodes++;
+				if (IsDrawnPosition(snapShot))
+					return 0;
 				if ((numRegularNodes + numQuiescenceNodes) > maxSearchSize)
-					return (snapShot.EvaluateMaterial(fromWhosePerspective) >> 3) << 3;
+					return (snapShot.EvaluateComplete(fromWhosePerspective) >> 3) << 3;
 
 				Move cachedMove = new Move();
 				if (tTable.LookupBoard(snapShot,cachedMove) && cachedMove.SearchDepth >= depth)
@@ -2392,7 +2936,7 @@ moveCounter--;
 				List<Move> orderedMoves = GetOrderedMoves(snapShot,false,ttMove,pvMove);
 
 				if (orderedMoves.Count == 0)
-					return (snapShot.EvaluateMaterial(fromWhosePerspective) >> 3) << 3;
+					return EvaluateNoLegalMoves(nodeType,snapShot,depth);
 
 				int bestSoFar = nodeType == MAXNODE ? ALPHABETA_MINVAL : ALPHABETA_MAXVAL;
 				Move bestMove = null;
@@ -2444,9 +2988,38 @@ moveCounter--;
 				return bestSoFar;
 			}
 
+			/// <summary>
+			/// Quiescence search for tactical positions - evaluates captures and checks only.
+			/// 
+			/// Purpose: Avoids the "horizon problem" where quiet moves at the search boundary
+			/// can dramatically change evaluation. By continuing to search tactical positions
+			/// (captures, checks) until stable, we get more accurate position assessments.
+			/// 
+			/// Key Features:
+			/// 1. Stand-pat evaluation: position without further moves provides lower bound (for max player)
+			/// 2. Captures only: search continues with captures, ordered by MVV/LVA
+			/// 3. Futility pruning: if material balance is far beyond bounds, return early
+			/// 4. Terminal detection: checkmate/stalemate handled same as in full search
+			/// 5. Depth-limited: quiescence depth (maxQuiescenceDepth) prevents infinite recursion
+			/// 6. Transposition table: results cached for efficiency
+			/// 
+			/// The function returns a "quiet" evaluation only after no captures improve the position
+			/// or maximum tactical depth is exhausted, ensuring tactical stability.
+			/// 
+			/// Evaluation from computer player's perspective (same as AlphaBeta).
+			/// </summary>
+			/// <param name="nodeType">MAXNODE (computer to move) or MINNODE (opponent to move).</param>
+			/// <param name="snapShot">Current board position.</param>
+			/// <param name="depth">Remaining quiescence depth (decremented for each capture). Depth=0 returns stand-pat.</param>
+			/// <param name="alpha">Lower bound on acceptable values.</param>
+			/// <param name="beta">Upper bound - pruning value.</param>
+			/// <param name="pvMove">Principal variation move for move ordering.</param>
+			/// <returns>Tactical evaluation of the position after all forcing moves are explored.</returns>
 			private int QuiescenceSearch(bool nodeType, SnapShot snapShot, int depth, int alpha, int beta, Move pvMove)
 			{
 				numQuiescenceNodes++;
+				if (IsDrawnPosition(snapShot))
+					return 0;
 
 				Move cachedMove = new Move();
 				if (tTable.LookupBoard(snapShot,cachedMove))
@@ -2469,13 +3042,24 @@ moveCounter--;
 					}
 				}
 
-				int standPat = (snapShot.EvaluateMaterial(fromWhosePerspective) >> 3) << 3;
+				int materialOnly = (snapShot.EvaluateMaterial(fromWhosePerspective) >> 3) << 3;
+				if (materialOnly > (beta + EVAL_THRESHOLD) || materialOnly < (alpha - EVAL_THRESHOLD))
+					return materialOnly;
+
+				int standPat = (snapShot.EvaluateComplete(fromWhosePerspective) >> 3) << 3;
 				if (standPat > alpha)
 					alpha = standPat;
 				if (standPat >= beta)
 					return standPat;
 
 				snapShot.CalculateLegalMoves();
+				if (snapShot.legalMoves.Count == 0)
+				{
+					int terminal = EvaluateNoLegalMoves(nodeType,snapShot,depth);
+					tTable.StoreSnapShot(snapShot,terminal,EvaluationType.Accurate,depth,NextTimeStamp());
+					return terminal;
+				}
+
 				if (!snapShot.HitPossible || depth == 0)
 				{
 					tTable.StoreSnapShot(snapShot,standPat,EvaluationType.Accurate,depth,NextTimeStamp());
@@ -2564,6 +3148,17 @@ moveCounter--;
 		private int EvaluateSituation(Color color)
 		{
 			int score = 0;
+			int ownNonPawnMaterial = 0;
+			int opponentNonPawnMaterial = 0;
+			int totalNonPawnMaterial = 0;
+			int endgamePhase = 0;
+			int ownKingField = -1;
+			int ownKingVCoord = -1;
+			int ownKingHCoord = -1;
+			int ownKingCenterDistance = 0;
+			int ownKingCentralizationBonus = 0;
+			int castlingWeight = 0;
+			int castlingScore = 0;
 
 			int kingVCoord = -1;
 			int kingHCoord = -1;
@@ -2599,6 +3194,54 @@ moveCounter--;
 
 			if (color == Color.White)
 			{
+				ownNonPawnMaterial =
+					whiteRooksCount*Helper.PieceType2Value(PieceType.Rook) +
+					whiteKnightsCount*Helper.PieceType2Value(PieceType.Knight) +
+					whiteBishopsCount*Helper.PieceType2Value(PieceType.Bishop) +
+					whiteQueensCount*Helper.PieceType2Value(PieceType.Queen);
+				opponentNonPawnMaterial =
+					blackRooksCount*Helper.PieceType2Value(PieceType.Rook) +
+					blackKnightsCount*Helper.PieceType2Value(PieceType.Knight) +
+					blackBishopsCount*Helper.PieceType2Value(PieceType.Bishop) +
+					blackQueensCount*Helper.PieceType2Value(PieceType.Queen);
+				ownKingField = whiteKingsField;
+			}
+			else
+			{
+				ownNonPawnMaterial =
+					blackRooksCount*Helper.PieceType2Value(PieceType.Rook) +
+					blackKnightsCount*Helper.PieceType2Value(PieceType.Knight) +
+					blackBishopsCount*Helper.PieceType2Value(PieceType.Bishop) +
+					blackQueensCount*Helper.PieceType2Value(PieceType.Queen);
+				opponentNonPawnMaterial =
+					whiteRooksCount*Helper.PieceType2Value(PieceType.Rook) +
+					whiteKnightsCount*Helper.PieceType2Value(PieceType.Knight) +
+					whiteBishopsCount*Helper.PieceType2Value(PieceType.Bishop) +
+					whiteQueensCount*Helper.PieceType2Value(PieceType.Queen);
+				ownKingField = blackKingsField;
+			}
+
+			totalNonPawnMaterial = ownNonPawnMaterial + opponentNonPawnMaterial;
+			if (totalNonPawnMaterial < 0)
+				totalNonPawnMaterial = 0;
+			if (totalNonPawnMaterial > 6400)
+				totalNonPawnMaterial = 6400;
+			endgamePhase = ((6400 - totalNonPawnMaterial) * 256) / 6400;
+
+			score += EvaluateSpaceControl(color,endgamePhase);
+			score += EvaluateBlockadeQuality(color,endgamePhase);
+			score += EvaluateKeySquareCoordination(color,endgamePhase);
+			score += EvaluateBishopPairComplexPressure(color,endgamePhase);
+			score += EvaluateHeavyPiecePenetration(color,endgamePhase);
+
+			ownKingVCoord = ownKingField % 8;
+			ownKingHCoord = ownKingField >> 3;
+			ownKingCenterDistance = Math.Min(Math.Abs(ownKingVCoord - 3),Math.Abs(ownKingVCoord - 4)) + Math.Min(Math.Abs(ownKingHCoord - 3),Math.Abs(ownKingHCoord - 4));
+			ownKingCentralizationBonus = (6 - (ownKingCenterDistance << 1));
+			score += (ownKingCentralizationBonus * endgamePhase) >> 4;
+
+			if (color == Color.White)
+			{
 				// assign a small penalty to positions in which there are still all
 				// pawns... this incites a single pawn trade (to open a file)
 				if (whitePawnsCount == 8)
@@ -2609,19 +3252,22 @@ moveCounter--;
 				if (columnMostAdvancedOwnPawnFieldNum[0] > Math.Max(columnLeastAdvancedOpponentPawnFieldNum[0],columnLeastAdvancedOpponentPawnFieldNum[1]))
 				{
 					x = (columnMostAdvancedOwnPawnFieldNum[0] % 8) + 1;
-					score += x*x;
+					int passedPawnBonus = x*x;
+					score += passedPawnBonus + ((passedPawnBonus * endgamePhase) >> 7);
 				}
 				if (columnMostAdvancedOwnPawnFieldNum[7] > Math.Max(columnLeastAdvancedOpponentPawnFieldNum[7],columnLeastAdvancedOpponentPawnFieldNum[6]))
 				{
 					x = (columnMostAdvancedOwnPawnFieldNum[7] % 8) + 1;
-					score += x*x;
+					int passedPawnBonus = x*x;
+					score += passedPawnBonus + ((passedPawnBonus * endgamePhase) >> 7);
 				}
 				for (int i = 1; i < 7; i++)
 				{
 					if (columnMostAdvancedOwnPawnFieldNum[i] > columnLeastAdvancedOpponentPawnFieldNum[i] && columnMostAdvancedOwnPawnFieldNum[i] > columnLeastAdvancedOpponentPawnFieldNum[i-1] && columnMostAdvancedOwnPawnFieldNum[i] > columnLeastAdvancedOpponentPawnFieldNum[i+1])
 					{
 						x = (columnMostAdvancedOwnPawnFieldNum[i] % 8) + 1;
-						score += x*x;
+						int passedPawnBonus = x*x;
+						score += passedPawnBonus + ((passedPawnBonus * endgamePhase) >> 7);
 					}
 				}
 
@@ -2663,7 +3309,7 @@ moveCounter--;
 				}
 				// finally, incite castling when the enemy has a queen on the board
 				if (hasWhiteCastled)
-					score += 10;
+					castlingScore += 10;
 				else
 				{
 					byte k = situation[32];
@@ -2671,14 +3317,19 @@ moveCounter--;
 					byte rk = situation[56];
 
 					if (k != 37 || (rq != 33 && rk != 33))
-						score -= 120;
+						castlingScore -= 120;
 					else if (k == 37 && rq == 33 && rk == 33)
-						score -= 24;
+						castlingScore -= 24;
 					else if (k == 37 && rq != 33 && rk == 33)
-						score -= 40;
+						castlingScore -= 40;
 					else if (k == 37 && rq == 33 && rk != 33)
-						score -= 80;
+						castlingScore -= 80;
 				}
+
+				castlingWeight = 256 - endgamePhase;
+				if (blackQueensCount == 0)
+					castlingWeight >>= 1;
+				score += (castlingScore * castlingWeight) >> 8;
 
 				kingVCoord = blackKingsField % 8;
 				kingHCoord = blackKingsField >> 3;
@@ -2716,13 +3367,64 @@ moveCounter--;
 								pieceVCoord = i % 8;
 								pieceHCoord = i >> 3;
 								score += 5 - Math.Abs(kingVCoord - pieceVCoord) - Math.Abs(kingHCoord - pieceHCoord);
+								score += EvaluateMinorOnWeakSquare(i,PieceType.Knight,color,endgamePhase);
+								// outpost bonus: knight on rank 5-7, not attackable by opponent pawn
+								if (pieceVCoord >= 4) // rank 5,6,7 (0-indexed rank 4,5,6)
+								{
+									bool isOutpost = true;
+									if (pieceHCoord > 0 && columnOpponentPawnCount[pieceHCoord - 1] > 0)
+									{
+										// check if black pawn is on adjacent file one rank ahead (rank+1)
+										int attackerField = (pieceHCoord - 1) * 8 + (pieceVCoord + 1);
+										if (attackerField < 64 && (situation[attackerField] == 40 || situation[attackerField] == 56))
+											isOutpost = false;
+									}
+									if (isOutpost && pieceHCoord < 7 && columnOpponentPawnCount[pieceHCoord + 1] > 0)
+									{
+										int attackerField = (pieceHCoord + 1) * 8 + (pieceVCoord + 1);
+										if (attackerField < 64 && (situation[attackerField] == 40 || situation[attackerField] == 56))
+											isOutpost = false;
+									}
+									if (isOutpost)
+									{
+										// centrality bonus: files c-f (index 2-5) are more valuable
+										int centralityBonus = (pieceHCoord >= 2 && pieceHCoord <= 5) ? 10 : 4;
+										int outpostBonus = 15 + centralityBonus + pieceVCoord * 2;
+										// scale down in endgame (outposts less decisive when queens/rooks gone)
+										score += outpostBonus - ((outpostBonus * endgamePhase) >> 9);
+									}
+								}
 								break;
 							case 3: // bishop
+								score += EvaluateMinorOnWeakSquare(i,PieceType.Bishop,color,endgamePhase);
 								// are there a lot of pawns on fields with same color?
 								if (Helper.FieldNumber2Color(i) == Color.White)
 									score -= fieldColorPawnCount[0] << 3;
 								else
 									score -= fieldColorPawnCount[1] << 3;
+								// diagonal mobility: count unobstructed squares on all 4 diagonals
+								{
+									int bishopFile = i >> 3;
+									int bishopRank = i % 8;
+									int mobilityScore = 0;
+									int[] diagStepFiles = { 1, 1, -1, -1 };
+									int[] diagStepRanks = { 1, -1, 1, -1 };
+									for (int d = 0; d < 4; d++)
+									{
+										int f = bishopFile + diagStepFiles[d];
+										int r = bishopRank + diagStepRanks[d];
+										while (f >= 0 && f < 8 && r >= 0 && r < 8)
+										{
+											int sq = f * 8 + r;
+											if (situation[sq] != 0)
+												break; // blocked
+											mobilityScore += 2;
+											f += diagStepFiles[d];
+											r += diagStepRanks[d];
+										}
+									}
+									score += mobilityScore;
+								}
 								break;
 							case 4: // queen
 								pieceVCoord = i % 8;
@@ -2747,19 +3449,22 @@ moveCounter--;
 				if (columnMostAdvancedOwnPawnFieldNum[0] < Math.Min(columnLeastAdvancedOpponentPawnFieldNum[0],columnLeastAdvancedOpponentPawnFieldNum[1]))
 				{
 					x = 8 - (columnMostAdvancedOwnPawnFieldNum[0] % 8);
-					score += x*x;
+					int passedPawnBonus = x*x;
+					score += passedPawnBonus + ((passedPawnBonus * endgamePhase) >> 7);
 				}
 				if (columnMostAdvancedOwnPawnFieldNum[7] < Math.Min(columnLeastAdvancedOpponentPawnFieldNum[7],columnLeastAdvancedOpponentPawnFieldNum[6]))
 				{
 					x = 8 - (columnMostAdvancedOwnPawnFieldNum[7] % 8);
-					score += x*x;
+					int passedPawnBonus = x*x;
+					score += passedPawnBonus + ((passedPawnBonus * endgamePhase) >> 7);
 				}
 				for (int i = 1; i < 7; i++)
 				{
 					if (columnMostAdvancedOwnPawnFieldNum[i] < columnLeastAdvancedOpponentPawnFieldNum[i] && columnMostAdvancedOwnPawnFieldNum[i] < columnLeastAdvancedOpponentPawnFieldNum[i-1] && columnMostAdvancedOwnPawnFieldNum[i] < columnLeastAdvancedOpponentPawnFieldNum[i+1])
 					{
 						x = 8 - (columnMostAdvancedOwnPawnFieldNum[i] % 8);
-						score += x*x;
+						int passedPawnBonus = x*x;
+						score += passedPawnBonus + ((passedPawnBonus * endgamePhase) >> 7);
 					}
 				}
 
@@ -2801,7 +3506,7 @@ moveCounter--;
 				}
 				// finally, incite castling when the enemy has a queen on the board
 				if (hasBlackCastled)
-					score += 10;
+					castlingScore += 10;
 				else
 				{
 					byte k = situation[39];
@@ -2809,14 +3514,19 @@ moveCounter--;
 					byte rk = situation[63];
 
 					if (k != 45 || (rq != 41 && rk != 41))
-						score -= 120;
+						castlingScore -= 120;
 					else if (k == 45 && rq == 41 && rk == 41)
-						score -= 24;
+						castlingScore -= 24;
 					else if (k == 45 && rq != 41 && rk == 41)
-						score -= 40;
+						castlingScore -= 40;
 					else if (k == 45 && rq == 41 && rk != 41)
-						score -= 80;
+						castlingScore -= 80;
 				}
+
+				castlingWeight = 256 - endgamePhase;
+				if (whiteQueensCount == 0)
+					castlingWeight >>= 1;
+				score += (castlingScore * castlingWeight) >> 8;
 
 				kingVCoord = whiteKingsField % 8;
 				kingHCoord = whiteKingsField >> 3;
@@ -2854,13 +3564,62 @@ moveCounter--;
 								pieceVCoord = i % 8;
 								pieceHCoord = i >> 3;
 								score += 5 - Math.Abs(kingVCoord - pieceVCoord) - Math.Abs(kingHCoord - pieceHCoord);
+								score += EvaluateMinorOnWeakSquare(i,PieceType.Knight,color,endgamePhase);
+								// outpost bonus: knight on rank 3-1 (advance for black = low rank index), not attackable by opponent pawn
+								if (pieceVCoord <= 3) // rank 4,3,2 (0-indexed rank 3,2,1)
+								{
+									bool isOutpost = true;
+									if (pieceHCoord > 0 && columnOpponentPawnCount[pieceHCoord - 1] > 0)
+									{
+										// check if white pawn is on adjacent file one rank ahead for black (rank-1)
+										int attackerField = (pieceHCoord - 1) * 8 + (pieceVCoord - 1);
+										if (attackerField >= 0 && (situation[attackerField] == 32 || situation[attackerField] == 48))
+											isOutpost = false;
+									}
+									if (isOutpost && pieceHCoord < 7 && columnOpponentPawnCount[pieceHCoord + 1] > 0)
+									{
+										int attackerField = (pieceHCoord + 1) * 8 + (pieceVCoord - 1);
+										if (attackerField >= 0 && (situation[attackerField] == 32 || situation[attackerField] == 48))
+											isOutpost = false;
+									}
+									if (isOutpost)
+									{
+										int centralityBonus = (pieceHCoord >= 2 && pieceHCoord <= 5) ? 10 : 4;
+										int outpostBonus = 15 + centralityBonus + (7 - pieceVCoord) * 2;
+										score += outpostBonus - ((outpostBonus * endgamePhase) >> 9);
+									}
+								}
 								break;
 							case 3: // bishop
+								score += EvaluateMinorOnWeakSquare(i,PieceType.Bishop,color,endgamePhase);
 								// are there a lot of pawns on fields with same color?
 								if (Helper.FieldNumber2Color(i) == Color.White)
 									score -= fieldColorPawnCount[0] << 3;
 								else
 									score -= fieldColorPawnCount[1] << 3;
+								// diagonal mobility: count unobstructed squares on all 4 diagonals
+								{
+									int bishopFile = i >> 3;
+									int bishopRank = i % 8;
+									int mobilityScore = 0;
+									int[] diagStepFiles = { 1, 1, -1, -1 };
+									int[] diagStepRanks = { 1, -1, 1, -1 };
+									for (int d = 0; d < 4; d++)
+									{
+										int f = bishopFile + diagStepFiles[d];
+										int r = bishopRank + diagStepRanks[d];
+										while (f >= 0 && f < 8 && r >= 0 && r < 8)
+										{
+											int sq = f * 8 + r;
+											if (situation[sq] != 0)
+												break; // blocked
+											mobilityScore += 2;
+											f += diagStepFiles[d];
+											r += diagStepRanks[d];
+										}
+									}
+									score += mobilityScore;
+								}
 								break;
 							case 4: // queen
 								pieceVCoord = i % 8;
@@ -2876,14 +3635,583 @@ moveCounter--;
 			return score;
 		}
 
+		private int EvaluateMinorOnWeakSquare(int field, PieceType pieceType, Color color, int endgamePhase)
+		{
+			int rank = field % 8;
+			int file = field >> 3;
+
+			bool inEnemyHalf = (color == Color.White) ? rank >= 4 : rank <= 3;
+			if (!inEnemyHalf)
+				return 0;
+
+			Color opponent = Helper.OpponentColor(color);
+			if (IsSquareAttackedByPawn(field,opponent))
+				return 0;
+
+			int bonus = pieceType == PieceType.Knight ? 8 : 6;
+			if (file >= 2 && file <= 5 && rank >= 2 && rank <= 5)
+				bonus += 4;
+
+			int middlegameWeight = 256 - endgamePhase;
+			return (bonus * middlegameWeight) >> 8;
+		}
+
+		private int EvaluateSpaceControl(Color color, int endgamePhase)
+		{
+			int whiteSpace = EvaluatePawnSpaceForColor(Color.White);
+			int blackSpace = EvaluatePawnSpaceForColor(Color.Black);
+			int relativeSpace = color == Color.White ? whiteSpace - blackSpace : blackSpace - whiteSpace;
+			relativeSpace = ClampScore(relativeSpace,-48,48);
+			int middlegameWeight = 256 - endgamePhase;
+			return (relativeSpace * middlegameWeight) >> 8;
+		}
+
+		private int EvaluatePawnSpaceForColor(Color side)
+		{
+			int space = 0;
+			Color opponent = Helper.OpponentColor(side);
+
+			for (int i = 0; i < 64; i++)
+			{
+				byte piece = situation[i];
+				if (piece == 0 || (piece & 7) != 0)
+					continue;
+
+				bool sidePawn = ((piece & 8) == 0 && side == Color.White) || ((piece & 8) == 8 && side == Color.Black);
+				if (!sidePawn)
+					continue;
+
+				int rank = i % 8;
+				int file = i >> 3;
+				int targetRank = side == Color.White ? rank + 1 : rank - 1;
+				if (targetRank < 0 || targetRank > 7)
+					continue;
+
+				if (file > 0)
+					space += EvaluateSpaceTarget((file - 1) * 8 + targetRank,side,opponent);
+				if (file < 7)
+					space += EvaluateSpaceTarget((file + 1) * 8 + targetRank,side,opponent);
+			}
+
+			return space;
+		}
+
+		private int EvaluateSpaceTarget(int targetField, Color color, Color opponent)
+		{
+			int rank = targetField % 8;
+			int file = targetField >> 3;
+
+			bool enemyHalf = (color == Color.White) ? rank >= 3 : rank <= 4;
+			if (!enemyHalf)
+				return 0;
+
+			int score = 2;
+			if (file >= 2 && file <= 5)
+				score++;
+			if (situation[targetField] == 0)
+				score++;
+			if (!IsSquareAttackedByPawn(targetField,opponent))
+				score++;
+
+			return score;
+		}
+
+		private int EvaluateBlockadeQuality(Color color, int endgamePhase)
+		{
+			int score = 0;
+			Color opponent = Helper.OpponentColor(color);
+
+			for (int i = 0; i < 64; i++)
+			{
+				byte piece = situation[i];
+				if (!IsOwnPiece(piece,color) || (piece & 7) != (int)PieceType.Knight)
+					continue;
+
+				int rank = i % 8;
+				int file = i >> 3;
+				int blockedPawnRank = color == Color.White ? rank + 1 : rank - 1;
+				if (blockedPawnRank < 0 || blockedPawnRank > 7)
+					continue;
+
+				int blockedPawnField = file * 8 + blockedPawnRank;
+				if (!IsPawnOfColor(blockedPawnField,opponent))
+					continue;
+
+				int bonus = 10;
+				if (file >= 2 && file <= 5)
+					bonus += 2;
+				if (!IsSquareAttackedByPawn(i,opponent))
+					bonus += 4;
+
+				int endgameWeight = 128 + (endgamePhase >> 1);
+				score += (bonus * endgameWeight) >> 8;
+			}
+
+			score = ClampScore(score,0,32);
+			return score;
+		}
+
+		private int EvaluateKeySquareCoordination(Color color, int endgamePhase)
+		{
+			int[] keySquares = new int[] { 27, 35, 28, 36 }; // d4, e4, d5, e5
+			int[] ownAttackCounts = new int[keySquares.Length];
+
+			for (int i = 0; i < 64; i++)
+			{
+				byte piece = situation[i];
+				if (!IsOwnPiece(piece,color))
+					continue;
+
+				int type = piece & 7;
+				if (type != (int)PieceType.Knight && type != (int)PieceType.Bishop && type != (int)PieceType.Queen)
+					continue;
+
+				for (int k = 0; k < keySquares.Length; k++)
+				{
+					if (DoesPieceAttackSquare(i,piece,keySquares[k]))
+						ownAttackCounts[k]++;
+				}
+			}
+
+			int score = 0;
+			for (int k = 0; k < keySquares.Length; k++)
+			{
+				int attackers = ownAttackCounts[k];
+				if (attackers == 0)
+					continue;
+
+				score += attackers;
+				if (attackers >= 2)
+					score += (attackers - 1) << 1;
+
+				byte occupant = situation[keySquares[k]];
+				if (IsOwnPiece(occupant,color) && attackers >= 2)
+					score += 2;
+			}
+
+			score = ClampScore(score,0,40);
+
+			int middlegameWeight = 256 - endgamePhase;
+			return (score * middlegameWeight) >> 7;
+		}
+
+		private int EvaluateBishopPairComplexPressure(Color color, int endgamePhase)
+		{
+			int ownBishops = color == Color.White ? whiteBishopsCount : blackBishopsCount;
+			if (ownBishops < 2)
+				return 0;
+
+			Color opponent = Helper.OpponentColor(color);
+			int opponentLightPawns = CountPawnsOnSquareColor(opponent,Color.White);
+			int opponentDarkPawns = CountPawnsOnSquareColor(opponent,Color.Black);
+			int imbalance = Math.Abs(opponentLightPawns - opponentDarkPawns);
+			imbalance = ClampScore(imbalance,0,4);
+
+			int bishopPairBase = 10;
+			int colorComplexPressure = imbalance << 1;
+			int score = bishopPairBase + colorComplexPressure;
+			score = ClampScore(score,0,24);
+
+			int middlegameWeight = 256 - (endgamePhase >> 1);
+			return (score * middlegameWeight) >> 8;
+		}
+
+		private int CountPawnsOnSquareColor(Color pawnColor, Color squareColor)
+		{
+			int count = 0;
+			for (int i = 0; i < 64; i++)
+			{
+				if (!IsPawnOfColor(i,pawnColor))
+					continue;
+
+				if (Helper.FieldNumber2Color(i) == squareColor)
+					count++;
+			}
+
+			return count;
+		}
+
+		private int EvaluateHeavyPiecePenetration(Color color, int endgamePhase)
+		{
+			int score = 0;
+			Color opponent = Helper.OpponentColor(color);
+
+			for (int i = 0; i < 64; i++)
+			{
+				byte piece = situation[i];
+				if (!IsOwnPiece(piece,color))
+					continue;
+
+				int type = piece & 7;
+				if (type != (int)PieceType.Rook && type != (int)PieceType.Queen)
+					continue;
+
+				int rank = i % 8;
+				int file = i >> 3;
+				bool inEnemyCamp = color == Color.White ? rank >= 5 : rank <= 2;
+				if (!inEnemyCamp)
+					continue;
+
+				int pieceScore = type == (int)PieceType.Queen ? 8 : 6;
+				if (rank == (color == Color.White ? 6 : 1))
+					pieceScore += 3;
+				if (!IsSquareAttackedByPawn(i,opponent))
+					pieceScore += 2;
+
+				int forward = color == Color.White ? 1 : -1;
+				int frontRank = rank + forward;
+				if (frontRank >= 0 && frontRank <= 7)
+				{
+					int frontField = file * 8 + frontRank;
+					if (situation[frontField] == 0)
+						pieceScore += 2;
+				}
+
+				score += pieceScore;
+			}
+
+			score = ClampScore(score,0,48);
+
+			int middlegameWeight = 192 + ((256 - endgamePhase) >> 2);
+			return (score * middlegameWeight) >> 8;
+		}
+
+		private int ClampScore(int score, int min, int max)
+		{
+			if (score < min)
+				return min;
+			if (score > max)
+				return max;
+
+			return score;
+		}
+
+		private bool IsOwnPiece(byte piece, Color color)
+		{
+			if (piece == 0)
+				return false;
+
+			if (color == Color.White)
+				return (piece & 8) == 0;
+			else
+				return (piece & 8) == 8;
+		}
+
+		private bool IsPawnOfColor(int field, Color color)
+		{
+			byte piece = situation[field];
+			if (piece == 0 || (piece & 7) != (int)PieceType.Pawn)
+				return false;
+
+			if (color == Color.White)
+				return (piece & 8) == 0;
+			else
+				return (piece & 8) == 8;
+		}
+
+		private bool DoesPieceAttackSquare(int sourceField, byte piece, int targetField)
+		{
+			if (sourceField == targetField)
+				return false;
+
+			int sourceFile = sourceField >> 3;
+			int sourceRank = sourceField % 8;
+			int targetFile = targetField >> 3;
+			int targetRank = targetField % 8;
+			int deltaFile = targetFile - sourceFile;
+			int deltaRank = targetRank - sourceRank;
+
+			int type = piece & 7;
+			if (type == (int)PieceType.Knight)
+			{
+				int adf = Math.Abs(deltaFile);
+				int adr = Math.Abs(deltaRank);
+				return (adf == 1 && adr == 2) || (adf == 2 && adr == 1);
+			}
+
+			if (type == (int)PieceType.Bishop)
+				return IsSlidingAttack(sourceField,targetField,true,false);
+
+			if (type == (int)PieceType.Queen)
+				return IsSlidingAttack(sourceField,targetField,true,true);
+
+			return false;
+		}
+
+		private bool IsSlidingAttack(int sourceField, int targetField, bool allowDiagonal, bool allowStraight)
+		{
+			int sourceFile = sourceField >> 3;
+			int sourceRank = sourceField % 8;
+			int targetFile = targetField >> 3;
+			int targetRank = targetField % 8;
+
+			int fileDelta = targetFile - sourceFile;
+			int rankDelta = targetRank - sourceRank;
+			int absFileDelta = Math.Abs(fileDelta);
+			int absRankDelta = Math.Abs(rankDelta);
+
+			int stepFile = 0;
+			int stepRank = 0;
+
+			if (allowDiagonal && absFileDelta == absRankDelta)
+			{
+				stepFile = fileDelta > 0 ? 1 : -1;
+				stepRank = rankDelta > 0 ? 1 : -1;
+			}
+			else if (allowStraight && (fileDelta == 0 || rankDelta == 0))
+			{
+				if (fileDelta == 0)
+				{
+					stepFile = 0;
+					stepRank = rankDelta > 0 ? 1 : -1;
+				}
+				else
+				{
+					stepFile = fileDelta > 0 ? 1 : -1;
+					stepRank = 0;
+				}
+			}
+			else
+			{
+				return false;
+			}
+
+			int file = sourceFile + stepFile;
+			int rank = sourceRank + stepRank;
+			while (file != targetFile || rank != targetRank)
+			{
+				int field = file * 8 + rank;
+				if (situation[field] != 0)
+					return false;
+
+				file += stepFile;
+				rank += stepRank;
+			}
+
+			return true;
+		}
+
+		private bool IsSquareAttackedByPawn(int field, Color pawnColor)
+		{
+			int rank = field % 8;
+			int file = field >> 3;
+
+			if (pawnColor == Color.White)
+			{
+				if (rank > 0)
+				{
+					if (file > 0)
+					{
+						byte p = situation[(file - 1) * 8 + (rank - 1)];
+						if (p != 0 && (p & 7) == 0 && (p & 8) == 0)
+							return true;
+					}
+					if (file < 7)
+					{
+						byte p = situation[(file + 1) * 8 + (rank - 1)];
+						if (p != 0 && (p & 7) == 0 && (p & 8) == 0)
+							return true;
+					}
+				}
+			}
+			else
+			{
+				if (rank < 7)
+				{
+					if (file > 0)
+					{
+						byte p = situation[(file - 1) * 8 + (rank + 1)];
+						if (p != 0 && (p & 7) == 0 && (p & 8) == 8)
+							return true;
+					}
+					if (file < 7)
+					{
+						byte p = situation[(file + 1) * 8 + (rank + 1)];
+						if (p != 0 && (p & 7) == 0 && (p & 8) == 8)
+							return true;
+					}
+				}
+			}
+
+			return false;
+		}
+
+		private int EvaluateMinorWeakSquareControl(Color color, int endgamePhase)
+		{
+			int score = 0;
+			for (int i = 0; i < 64; i++)
+			{
+				byte piece = situation[i];
+				if (!IsOwnPiece(piece,color))
+					continue;
+
+				int type = piece & 7;
+				if (type == (int)PieceType.Knight)
+					score += EvaluateMinorOnWeakSquare(i,PieceType.Knight,color,endgamePhase);
+				else if (type == (int)PieceType.Bishop)
+					score += EvaluateMinorOnWeakSquare(i,PieceType.Bishop,color,endgamePhase);
+			}
+
+			return score;
+		}
+
+		private int ComputeEndgamePhase(Color color)
+		{
+			int ownNonPawnMaterial;
+			int opponentNonPawnMaterial;
+
+			if (color == Color.White)
+			{
+				ownNonPawnMaterial =
+					whiteRooksCount*Helper.PieceType2Value(PieceType.Rook) +
+					whiteKnightsCount*Helper.PieceType2Value(PieceType.Knight) +
+					whiteBishopsCount*Helper.PieceType2Value(PieceType.Bishop) +
+					whiteQueensCount*Helper.PieceType2Value(PieceType.Queen);
+				opponentNonPawnMaterial =
+					blackRooksCount*Helper.PieceType2Value(PieceType.Rook) +
+					blackKnightsCount*Helper.PieceType2Value(PieceType.Knight) +
+					blackBishopsCount*Helper.PieceType2Value(PieceType.Bishop) +
+					blackQueensCount*Helper.PieceType2Value(PieceType.Queen);
+			}
+			else
+			{
+				ownNonPawnMaterial =
+					blackRooksCount*Helper.PieceType2Value(PieceType.Rook) +
+					blackKnightsCount*Helper.PieceType2Value(PieceType.Knight) +
+					blackBishopsCount*Helper.PieceType2Value(PieceType.Bishop) +
+					blackQueensCount*Helper.PieceType2Value(PieceType.Queen);
+				opponentNonPawnMaterial =
+					whiteRooksCount*Helper.PieceType2Value(PieceType.Rook) +
+					whiteKnightsCount*Helper.PieceType2Value(PieceType.Knight) +
+					whiteBishopsCount*Helper.PieceType2Value(PieceType.Bishop) +
+					whiteQueensCount*Helper.PieceType2Value(PieceType.Queen);
+			}
+
+			int totalNonPawnMaterial = ownNonPawnMaterial + opponentNonPawnMaterial;
+			if (totalNonPawnMaterial < 0)
+				totalNonPawnMaterial = 0;
+			if (totalNonPawnMaterial > 6400)
+				totalNonPawnMaterial = 6400;
+
+			return ((6400 - totalNonPawnMaterial) * 256) / 6400;
+		}
+
+		/// <summary>
+		/// Holds a detailed, per-term evaluation breakdown for debugging and tuning.
+		/// </summary>
+		public sealed class EvaluationBreakdown
+		{
+			public bool IsDrawnPosition { get; set; }
+			public int MaterialScore { get; set; }
+			public int PositionalScore { get; set; }
+			public int SpaceControlScore { get; set; }
+			public int MinorWeakSquareScore { get; set; }
+			public int BlockadeQualityScore { get; set; }
+			public int KeySquareCoordinationScore { get; set; }
+			public int BishopPairComplexPressureScore { get; set; }
+			public int HeavyPiecePenetrationScore { get; set; }
+			public int TrackedHeuristicsScore { get; set; }
+			public int ResidualPositionalScore { get; set; }
+			public int EndgamePhase { get; set; }
+			public int TotalScore { get; set; }
+		}
+
+		/// <summary>
+		/// Computes a detailed per-term evaluation breakdown for debugging/tuning.
+		/// </summary>
+		/// <param name="color">Perspective side.</param>
+		/// <returns>Material, positional and tracked heuristic subtotals plus final score.</returns>
+		public EvaluationBreakdown GetEvaluationBreakdown(Color color)
+		{
+			if (IsDrawByInsufficientMaterial() || IsDrawByRepetition() || IsDrawByFiftyMoveRule())
+			{
+				return new EvaluationBreakdown
+				{
+					IsDrawnPosition = true,
+					MaterialScore = 0,
+					PositionalScore = 0,
+					SpaceControlScore = 0,
+					MinorWeakSquareScore = 0,
+					BlockadeQualityScore = 0,
+					KeySquareCoordinationScore = 0,
+					BishopPairComplexPressureScore = 0,
+					HeavyPiecePenetrationScore = 0,
+					TrackedHeuristicsScore = 0,
+					ResidualPositionalScore = 0,
+					EndgamePhase = 0,
+					TotalScore = 0
+				};
+			}
+
+			AnalyzePawnSituation(color);
+
+			int endgamePhase = ComputeEndgamePhase(color);
+			int material = EvaluateMaterial(color);
+			int positional = EvaluateSituation(color);
+
+			int space = EvaluateSpaceControl(color,endgamePhase);
+			int minorWeakSquares = EvaluateMinorWeakSquareControl(color,endgamePhase);
+			int blockade = EvaluateBlockadeQuality(color,endgamePhase);
+			int coordination = EvaluateKeySquareCoordination(color,endgamePhase);
+			int bishopPairPressure = EvaluateBishopPairComplexPressure(color,endgamePhase);
+			int heavyPenetration = EvaluateHeavyPiecePenetration(color,endgamePhase);
+
+			int tracked = space + minorWeakSquares + blockade + coordination + bishopPairPressure + heavyPenetration;
+			int residual = positional - tracked;
+
+			return new EvaluationBreakdown
+			{
+				IsDrawnPosition = false,
+				MaterialScore = material,
+				PositionalScore = positional,
+				SpaceControlScore = space,
+				MinorWeakSquareScore = minorWeakSquares,
+				BlockadeQualityScore = blockade,
+				KeySquareCoordinationScore = coordination,
+				BishopPairComplexPressureScore = bishopPairPressure,
+				HeavyPiecePenetrationScore = heavyPenetration,
+				TrackedHeuristicsScore = tracked,
+				ResidualPositionalScore = residual,
+				EndgamePhase = endgamePhase,
+				TotalScore = material + positional
+			};
+		}
+
+		/// <summary>
+		/// Formats the evaluation breakdown as a compact multi-line debug string.
+		/// </summary>
+		/// <param name="color">Perspective side.</param>
+		/// <returns>Human-readable breakdown text for logs/debug output.</returns>
+		public string GetEvaluationBreakdownString(Color color)
+		{
+			EvaluationBreakdown breakdown = GetEvaluationBreakdown(color);
+			if (breakdown.IsDrawnPosition)
+				return "Evaluation breakdown: Drawn position => total 0";
+
+			StringBuilder sb = new StringBuilder();
+			sb.AppendLine("Evaluation breakdown:");
+			sb.AppendLine($"  EndgamePhase: {breakdown.EndgamePhase}");
+			sb.AppendLine($"  Material: {breakdown.MaterialScore}");
+			sb.AppendLine($"  Positional: {breakdown.PositionalScore}");
+			sb.AppendLine($"    SpaceControl: {breakdown.SpaceControlScore}");
+			sb.AppendLine($"    MinorWeakSquares: {breakdown.MinorWeakSquareScore}");
+			sb.AppendLine($"    BlockadeQuality: {breakdown.BlockadeQualityScore}");
+			sb.AppendLine($"    KeySquareCoordination: {breakdown.KeySquareCoordinationScore}");
+			sb.AppendLine($"    BishopPairComplexPressure: {breakdown.BishopPairComplexPressureScore}");
+			sb.AppendLine($"    HeavyPiecePenetration: {breakdown.HeavyPiecePenetrationScore}");
+			sb.AppendLine($"    TrackedHeuristics: {breakdown.TrackedHeuristicsScore}");
+			sb.AppendLine($"    ResidualPositional: {breakdown.ResidualPositionalScore}");
+			sb.Append($"  Total: {breakdown.TotalScore}");
+
+			return sb.ToString();
+		}
+
 		// Look at pawn positions to be able to detect features such as doubled,
 		// isolated or passed pawns
 		private void AnalyzePawnSituation(Color color)
 		{
 			// Reset the counters
-			int tmp = 0;
-			if (color == Color.White)
-				tmp = 63;
+			int tmp = color == Color.White ? 0 : 63;
 			for (int i = 0; i < 8; i++)
 			{
 				columnOwnPawnCount[i] = 0;
@@ -2990,12 +4318,33 @@ moveCounter--;
 		}
 
 		/// <summary>
-		/// Evaluates the current position using material and positional terms from the given perspective.
+		/// Evaluates the complete position from the given player's perspective using material and positional terms.
+		/// 
+		/// Evaluation includes:
+		/// 1. Draw detection check - returns 0 if position is drawn by any rule
+		/// 2. Material evaluation - pawn/piece value calculation
+		/// 3. Positional evaluation - king safety, pawn structure, piece placement, endgame heuristics
+		/// 
+		/// Positional evaluation is phase-aware (tapered between opening/middlegame and endgame):
+		/// - King centralization bonus increases in endgames
+		/// - Passed pawn bonuses scale up in endgames
+		/// - Castling pressure (rooks on files) tapers in endgames
+		/// - Material-relative weights shift from development focus to pawn promotion focus
+		/// 
+		/// Higher return values indicate better positions for the given color.
+		/// This is the primary evaluation routine used during quiescence search leaf nodes.
 		/// </summary>
-		/// <param name="color">The side from whose perspective the score is computed.</param>
-		/// <returns>A higher value indicates a better position for <paramref name="color"/>.</returns>
+		/// <param name="color">The player from whose perspective the position is evaluated (White or Black).</param>
+		/// <returns>
+		/// Evaluation score (positive = color is winning, negative = color is losing, 0 = equal or drawn).
+		/// Typical ranges: ±100 for pawn advantage, ±300 for minor piece, ±500 for rook, ±900 for queen.
+		/// Returns 0 if position is drawn (insufficient material, repetition, fifty-move rule).
+		/// </returns>
 		public int EvaluateComplete(Color color)
 		{
+			if (IsDrawByInsufficientMaterial() || IsDrawByRepetition() || IsDrawByFiftyMoveRule())
+				return 0;
+
 			AnalyzePawnSituation(color);
 			return
 				EvaluateMaterial(color)+
@@ -3008,6 +4357,194 @@ moveCounter--;
 		/// </summary>
 		/// <param name="color">The side from whose perspective the score is computed.</param>
 		/// <returns>A positive value indicates a material advantage for <paramref name="color"/>.</returns>
+		/// <summary>
+		/// Checks if the position is a draw due to insufficient material to achieve checkmate.
+		/// 
+		/// FIDE Rules recognize draws when one side lacks mating material:
+		/// - King vs King (trivial draw)
+		/// - King + Single Minor Piece vs King (bishop or knight cannot deliver mate alone)
+		/// - King + Two Knights vs King (legal but practically impossible to mate)
+		/// - King + Bishop vs King + Bishop on opposite-colored squares (cannot mate, often drawn)
+		/// 
+		/// This method checks only the impossible-to-mate cases. In positions with:
+		/// - Any pawns, rooks, or queens: return false (mating is possible)
+		/// - Only kings and minor pieces: apply insufficient material rules
+		/// 
+		/// Note: King + same-colored bishops may technically lead to mate in some positions,
+		/// but FIDE considers it a draw anyway for simplicity. This implementation does not
+		/// distinguish bishop colors.
+		/// </summary>
+		/// <returns>True if the position has insufficient material for either side to deliver checkmate; false otherwise.</returns>
+		public bool IsDrawByInsufficientMaterial()
+		{
+			if (whitePawnsCount > 0 || blackPawnsCount > 0)
+				return false;
+			if (whiteRooksCount > 0 || blackRooksCount > 0)
+				return false;
+			if (whiteQueensCount > 0 || blackQueensCount > 0)
+				return false;
+
+			int whiteMinors = whiteKnightsCount + whiteBishopsCount;
+			int blackMinors = blackKnightsCount + blackBishopsCount;
+
+			if (whiteMinors == 0 && blackMinors == 0)
+				return true;
+			if (whiteMinors == 1 && blackMinors == 0)
+				return true;
+			if (whiteMinors == 0 && blackMinors == 1)
+				return true;
+			if (whiteMinors == 1 && blackMinors == 1)
+				return true;
+			if (whiteMinors == 2 && blackMinors == 0 && whiteKnightsCount == 2)
+				return true;
+			if (blackMinors == 2 && whiteMinors == 0 && blackKnightsCount == 2)
+				return true;
+
+			return false;
+		}
+
+		private int GetRepetitionHashCode()
+		{
+			int hash = whoToMove == Color.White ? 917519 : 190871;
+			for (int i = 0; i < 64; i++)
+			{
+				byte x = situation[i];
+				if (x == 0)
+					continue;
+
+				byte normalized = x;
+				PieceType pieceType = (PieceType)(x & 7);
+				if (pieceType == PieceType.Knight || pieceType == PieceType.Bishop || pieceType == PieceType.Queen)
+					normalized = (byte)((x & 8) | (x & 7));
+
+				hash ^= hashKeyComponents[normalized,i];
+			}
+			return hash;
+		}
+
+		private int GetRepetitionLockCode()
+		{
+			int hash = whoToMove == Color.White ? 339391 : 5575573;
+			for (int i = 0; i < 64; i++)
+			{
+				byte x = situation[i];
+				if (x == 0)
+					continue;
+
+				byte normalized = x;
+				PieceType pieceType = (PieceType)(x & 7);
+				if (pieceType == PieceType.Knight || pieceType == PieceType.Bishop || pieceType == PieceType.Queen)
+					normalized = (byte)((x & 8) | (x & 7));
+
+				hash ^= hashKeyComponents[normalized == 0 ? 0 : normalized-1,i];
+			}
+			return hash;
+		}
+
+		/// <summary>
+		/// Checks if the position has occurred the required number of times (threefold repetition by default).
+		/// 
+		/// FIDE Rules:
+		/// - Threefold repetition (same position 3 times) may be claimed as a draw
+		/// - Positions are identical when board state AND side-to-move match
+		/// - These instances need not be consecutive
+		/// 
+		/// Implementation Details:
+		/// - Uses specialized GetRepetitionHashCode/GetRepetitionLockCode for position keys
+		/// - These keys NORMALIZE piece "moved" flags for non-critical pieces (knights, bishops, queens)
+		///   but PRESERVE them for pivotal pieces (pawns, rooks, kings)
+		/// - Why? Knights/bishops/queens lose tempo-information irrelevance; pawns/rooks/kings don't
+		/// - Walks move history backwards, counting position occurrences at the same side-to-move
+		/// - Returns true when requiredOccurrences instances are found
+		/// 
+		/// Default requiredOccurrences=3 implements chess rules; testing may use 2 for shortened games.
+		/// </summary>
+		/// <param name="requiredOccurrences">Number of repetitions to trigger draw (default 3 per FIDE rules).</param>
+		/// <returns>True if this position has occurred requiredOccurrences times with same side-to-move; false otherwise.</returns>
+		public bool IsDrawByRepetition(int requiredOccurrences = 3)
+		{
+			if (requiredOccurrences < 2)
+				requiredOccurrences = 2;
+
+			if (history == null || history.Count < 4)
+				return false;
+
+			int hash = this.GetRepetitionHashCode();
+			int lockCode = this.GetRepetitionLockCode();
+			int occurrenceCount = 1;
+
+			for (int i = 0; i < history.Count; i++)
+			{
+				Move historicMove = history[i];
+				if (historicMove == null || historicMove.SnapShot == null)
+					continue;
+
+				SnapShot prior = historicMove.SnapShot;
+				if (prior.whoToMove != this.whoToMove)
+					continue;
+
+				if (prior.GetRepetitionHashCode() == hash && prior.GetRepetitionLockCode() == lockCode)
+				{
+					occurrenceCount++;
+					if (occurrenceCount >= requiredOccurrences)
+						return true;
+				}
+			}
+
+			return false;
+		}
+
+		/// <summary>
+		/// Checks if the position is a draw under the fifty-move rule.
+		/// 
+		/// FIDE Rules:
+		/// - After 50 full moves (100 half-moves/plies) with no pawn moves and no captures,
+		///   either player may claim a draw
+		/// - Most engines treat this as an automatic draw for search efficiency
+		/// 
+		/// Implementation:
+		/// - Scans move history backwards from the current position
+		/// - Counts consecutive half-moves that are:
+		///   * NOT pawn moves (pawn captures automatically satisfy pawn-move criterion)
+		///   * NOT captures (PieceHit == None)
+		/// - Stops counting at first reset event (pawn move OR capture)
+		/// - Returns true if 100 consecutive qualifying half-moves are found
+		/// 
+		/// Edge Cases:
+		/// - If move history has fewer than 100 moves, returns false  
+		/// - Used in both search and evaluation for draw detection cutoffs
+		/// </summary>
+		/// <returns>True if the last 100 half-moves contain no pawn moves and no captures; false otherwise.</returns>
+		public bool IsDrawByFiftyMoveRule()
+		{
+			// Fifty-move rule: if fifty consecutive half-moves (per side) occur without a pawn move or capture,
+			// the position is drawn. In move history, this means the last 100 half-moves must all be non-pawn, non-capture moves.
+			if (history == null || history.Count < 100)
+				return false;
+
+			// Walk backwards from the end of history, counting non-pawn, non-capture moves.
+			// Stop if we hit a pawn move or capture.
+			int halfMovesSinceReset = 0;
+			for (int i = history.Count - 1; i >= 0; i--)
+			{
+				Move move = history[i];
+				if (move == null)
+					break;
+
+				// If this move was a pawn move or a capture, reset the counter
+				if (move.PieceType == PieceType.Pawn || move.PieceHit != PieceType.None)
+					break;
+
+				halfMovesSinceReset++;
+
+				// If we've found 100 consecutive half-moves without pawn move or capture, it's a draw
+				if (halfMovesSinceReset >= 100)
+					return true;
+			}
+
+			return false;
+		}
+
 		public int EvaluateMaterial(Color color)
 		{
 			// If both sides are equal, no need to compute anything!
@@ -3054,9 +4591,21 @@ moveCounter--;
 			}
 		}
 
+		/// <summary>
+		/// Raised when a pawn promotion choice is required.
+		/// </summary>
 		public event PromotePawnEventHandler PromotePawnEventHandler;
+		/// <summary>
+		/// Raised when the side to move gives check after a move.
+		/// </summary>
 		public event CheckEventHandler CheckEventHandler;
+		/// <summary>
+		/// Raised when the game ends by checkmate or stalemate.
+		/// </summary>
 		public event GameOverEventHandler GameOverEventHandler;
+		/// <summary>
+		/// Raised when a piece is captured.
+		/// </summary>
 		public event PieceHitEventHandler PieceHitEventHandler;
 
 		/// <summary>
@@ -3068,6 +4617,115 @@ moveCounter--;
 			SnapShot s = new SnapShot((byte[])startupSituation.Clone(),Color.White,false,false,true);
 			s.CalculateLegalMoves();
 			return s;
+		}
+
+		/// <summary>
+		/// Creates a snapshot from a FEN string.
+		/// </summary>
+		/// <param name="fen">Forsyth-Edwards Notation text containing board and side-to-move fields.</param>
+		/// <returns>A snapshot initialized from the FEN content.</returns>
+		/// <exception cref="ArgumentException">Thrown when FEN input is null/empty or invalid.</exception>
+		public static SnapShot FromFen(string fen)
+		{
+			if (string.IsNullOrWhiteSpace(fen))
+				throw new ArgumentException("Invalid","fen");
+
+			string[] fields = fen.Trim().Split(new char[] { ' ' },StringSplitOptions.RemoveEmptyEntries);
+			if (fields.Length < 2)
+				throw new ArgumentException("Invalid FEN","fen");
+
+			byte[] board = new byte[64];
+			string[] ranks = fields[0].Split('/');
+			if (ranks.Length != 8)
+				throw new ArgumentException("Invalid board section in FEN","fen");
+
+			for (int rankIndex = 0; rankIndex < 8; rankIndex++)
+			{
+				string rank = ranks[rankIndex];
+				int file = 0;
+
+				for (int i = 0; i < rank.Length; i++)
+				{
+					char c = rank[i];
+					if (c >= '1' && c <= '8')
+					{
+						file += c - '0';
+						continue;
+					}
+
+					if (file >= 8)
+						throw new ArgumentException("Invalid board section in FEN","fen");
+
+					int internalRank = 7 - rankIndex;
+					int fieldNumber = file * 8 + internalRank;
+					board[fieldNumber] = FenPieceToBoardValue(c);
+					file++;
+				}
+
+				if (file != 8)
+					throw new ArgumentException("Invalid board section in FEN","fen");
+			}
+
+			Color whoToMove = fields[1] == "b" ? Color.Black : Color.White;
+			if (fields[1] != "w" && fields[1] != "b")
+				throw new ArgumentException("Invalid side-to-move section in FEN","fen");
+
+			bool hasWhiteCastled = false;
+			bool hasBlackCastled = false;
+
+			if (board[48] == ((byte)PieceType.King | (byte)Mask.NullFlag) || board[16] == ((byte)PieceType.King | (byte)Mask.NullFlag))
+				hasWhiteCastled = true;
+			if (board[55] == ((byte)PieceType.King | (byte)Mask.Color | (byte)Mask.NullFlag) || board[23] == ((byte)PieceType.King | (byte)Mask.Color | (byte)Mask.NullFlag))
+				hasBlackCastled = true;
+
+			return new SnapShot(board,whoToMove,hasWhiteCastled,hasBlackCastled,false);
+		}
+
+		private static byte FenPieceToBoardValue(char token)
+		{
+			Color color;
+			char pieceToken;
+			if (token >= 'A' && token <= 'Z')
+			{
+				color = Color.White;
+				pieceToken = token;
+			}
+			else if (token >= 'a' && token <= 'z')
+			{
+				color = Color.Black;
+				pieceToken = (char)(token - 32);
+			}
+			else
+			{
+				throw new ArgumentException("Invalid board section in FEN","token");
+			}
+
+			PieceType pieceType;
+			switch (pieceToken)
+			{
+				case 'P':
+					pieceType = PieceType.Pawn;
+					break;
+				case 'N':
+					pieceType = PieceType.Knight;
+					break;
+				case 'B':
+					pieceType = PieceType.Bishop;
+					break;
+				case 'R':
+					pieceType = PieceType.Rook;
+					break;
+				case 'Q':
+					pieceType = PieceType.Queen;
+					break;
+				case 'K':
+					pieceType = PieceType.King;
+					break;
+				default:
+					throw new ArgumentException("Invalid board section in FEN","token");
+			}
+
+			return (byte)((byte)Mask.NullFlag | (byte)pieceType | (byte)color);
 		}
 
 		private static byte[] startupSituation = new byte[] {
@@ -3144,6 +4802,9 @@ moveCounter--;
 		}
 
 		private SituationCode currentSituationCode = SituationCode.Normal;
+		/// <summary>
+		/// Gets the currently assessed game situation for the side to move.
+		/// </summary>
 		public SituationCode CurrentSituationCode
 		{
 			get
@@ -3205,6 +4866,11 @@ moveCounter--;
 			return BuildCapturedPiecesString(pawns, rooks, knights, bishops, queens, capturedPieceColor, useUnicode);
 		}
 
+		/// <summary>
+		/// Builds a compact summary of pieces captured by each side.
+		/// </summary>
+		/// <param name="useUnicode">If true, uses Unicode chess symbols; otherwise ASCII letters.</param>
+		/// <returns>Summary text for captured material by White and Black.</returns>
 		public string GetCapturedPiecesSummary(bool useUnicode)
 		{
 			int capturedByWhitePawns = 8 - blackPawnsCount;
@@ -3223,6 +4889,9 @@ moveCounter--;
 				+ " | Captured by Black: " + BuildCapturedPiecesString(capturedByBlackPawns, capturedByBlackRooks, capturedByBlackKnights, capturedByBlackBishops, capturedByBlackQueens, Color.White, useUnicode);
 		}
 
+		/// <summary>
+		/// Gets captured-pieces summary in ASCII format.
+		/// </summary>
 		public string CapturedPiecesSummary
 		{
 			get
@@ -4885,7 +6554,11 @@ moveCounter--;
 			}
 		} // calculateLegalMoves
 
-        public string GetChessFontString()
+		/// <summary>
+		/// Returns a board rendering string in legacy chess-font format.
+		/// </summary>
+		/// <returns>Chess-font formatted board text.</returns>
+		public string GetChessFontString()
         {
             //@"!""""""""""""""""#" + "\r\n" +
             //    @"�tMvWlVmT%" + "\r\n" +
@@ -4900,6 +6573,10 @@ moveCounter--;
             return "";
         }
 		
+		/// <summary>
+		/// Returns a detailed ASCII board view including side to move, last move, and legal SAN moves.
+		/// </summary>
+		/// <returns>Formatted multi-line board representation.</returns>
 		public override string ToString()
 		{
 			string temp = "";
@@ -5152,11 +6829,26 @@ moveCounter--;
 			return sb.ToString();
 		}
 
+		/// <summary>
+		/// Returns a compact user-facing board representation without snapshot header/status metadata.
+		/// </summary>
+		/// <param name="useUnicode">If true, uses Unicode rendering.</param>
+		/// <param name="includeLegalMoves">If true, appends legal SAN moves.</param>
+		/// <param name="includeHistory">If true, appends recent move history.</param>
+		/// <param name="historySteps">Maximum number of history plies to include.</param>
+		/// <param name="whiteAtBottom">If true, renders from White's perspective.</param>
+		/// <returns>Compact game-output board text.</returns>
 		public string ToGameOutputString(bool useUnicode = true, bool includeLegalMoves = true, bool includeHistory = false, int historySteps = 8, bool whiteAtBottom = true)
 		{
 			return ToUserFriendlyString(useUnicode, includeLegalMoves, includeHistory, historySteps, whiteAtBottom, false, false, false);
 		}
 
+		/// <summary>
+		/// Returns SAN-formatted move history.
+		/// </summary>
+		/// <param name="includeMoveNumbers">If true, includes move numbers in output.</param>
+		/// <param name="maxHalfMoves">Maximum plies to include; negative includes full history.</param>
+		/// <returns>SAN move sequence string, or empty string when no history exists.</returns>
 		public string GetHistorySanString(bool includeMoveNumbers = true, int maxHalfMoves = -1)
 		{
 			if (history == null || history.Count == 0)
@@ -5205,6 +6897,11 @@ moveCounter--;
 			return sb.ToString();
 		}
 
+		/// <summary>
+		/// Returns the standard board representation with appended trailing history entries.
+		/// </summary>
+		/// <param name="lastHistoryStepsIncluded">Number of latest history entries to append.</param>
+		/// <returns>Board text with optional history appendix.</returns>
 		public string ToString(int lastHistoryStepsIncluded)
 		{
 			string retVal = this.ToString();
@@ -5229,6 +6926,9 @@ moveCounter--;
 			}
 		}
 
+		/// <summary>
+		/// Gets full coordinate-notation history as multi-line text.
+		/// </summary>
 		public string History
 		{
 			get
@@ -5241,6 +6941,10 @@ moveCounter--;
 			}
 		}
 		
+		/// <summary>
+		/// Creates a deep clone of this snapshot, including board state, counters, legal moves, and move history.
+		/// </summary>
+		/// <returns>Independent snapshot copy.</returns>
 		public SnapShot Clone()
 		{
 			SnapShot s = new SnapShot((byte[])this.situation.Clone(),this.whoToMove,false,false,true);
@@ -6023,6 +7727,12 @@ moveCounter--;
 		}
 */
 
+		/// <summary>
+		/// Computes best move using the legacy MTD engine, optionally backed by an opening book.
+		/// </summary>
+		/// <param name="openingBookFileName">Opening book file path/key.</param>
+		/// <param name="format">Opening book notation format.</param>
+		/// <returns>Best move returned by the MTD search engine.</returns>
 		public Move GetBestMoveMTD(string openingBookFileName, OpeningBookFormat format)
 		{
 			OpeningBook openings = null;
@@ -6040,6 +7750,12 @@ moveCounter--;
 			return MTDPicker.GetBestMove(this.Clone(),openings);
 		}
 
+		/// <summary>
+		/// Computes best move using the MTDv2 engine, optionally backed by an opening book.
+		/// </summary>
+		/// <param name="openingBookFileName">Opening book file path/key.</param>
+		/// <param name="format">Opening book notation format.</param>
+		/// <returns>Best move returned by the MTDv2 search engine.</returns>
 		public Move GetBestMoveMTDv2(string openingBookFileName, OpeningBookFormat format)
 		{
 			OpeningBook openings = null;

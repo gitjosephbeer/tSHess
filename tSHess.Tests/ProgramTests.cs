@@ -127,6 +127,54 @@ namespace tSHess.Tests
             Assert.Equal(Program.AutoplayAction.Continue, actual);
         }
 
+        [Theory]
+        [InlineData("eval")]
+        [InlineData("evaluation")]
+        [InlineData(" EVAL ")]
+        public void IsEvaluationCommand_RecognizesSupportedInputs(string input)
+        {
+            Assert.True(Program.IsEvaluationCommand(input));
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("evaluate")]
+        [InlineData("hint")]
+        [InlineData("moves")]
+        public void IsEvaluationCommand_RejectsUnsupportedInputs(string input)
+        {
+            Assert.False(Program.IsEvaluationCommand(input));
+        }
+
+        [Theory]
+        [InlineData("eval", Color.White, Color.White)]
+        [InlineData("evaluation", Color.Black, Color.Black)]
+        [InlineData("eval white", Color.Black, Color.White)]
+        [InlineData("eval black", Color.White, Color.Black)]
+        [InlineData("eval w", Color.Black, Color.White)]
+        [InlineData("evaluation b", Color.White, Color.Black)]
+        public void TryParseEvaluationCommand_ParsesPerspective(string input, Color sideToMove, Color expectedPerspective)
+        {
+            bool parsed = Program.TryParseEvaluationCommand(input, sideToMove, out Color perspective);
+
+            Assert.True(parsed);
+            Assert.Equal(expectedPerspective, perspective);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("eval now")]
+        [InlineData("eval white extra")]
+        [InlineData("evaluation side")]
+        [InlineData("hint")]
+        public void TryParseEvaluationCommand_InvalidInput_ReturnsFalse(string input)
+        {
+            bool parsed = Program.TryParseEvaluationCommand(input, Color.White, out Color perspective);
+
+            Assert.False(parsed);
+            Assert.Equal(Color.White, perspective);
+        }
+
         [Fact]
         public void FormatGameResult_Stalemate_IsDrawMessage()
         {

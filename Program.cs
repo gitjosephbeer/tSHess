@@ -51,6 +51,50 @@ namespace tSHess
             DisableFast
         }
 
+        internal static bool IsEvaluationCommand(string input)
+        {
+            string normalized = input == null ? "" : input.Trim().ToLowerInvariant();
+            return normalized == "eval" || normalized == "evaluation";
+        }
+
+        internal static bool TryParseEvaluationCommand(string input, Color sideToMove, out Color perspective)
+        {
+            perspective = sideToMove;
+            string normalized = input == null ? "" : input.Trim().ToLowerInvariant();
+            if (normalized.Length == 0)
+                return false;
+
+            string[] parts = normalized.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0)
+                return false;
+
+            if (parts[0] != "eval" && parts[0] != "evaluation")
+                return false;
+
+            if (parts.Length == 1)
+            {
+                perspective = sideToMove;
+                return true;
+            }
+
+            if (parts.Length == 2)
+            {
+                if (parts[1] == "white" || parts[1] == "w")
+                {
+                    perspective = Color.White;
+                    return true;
+                }
+
+                if (parts[1] == "black" || parts[1] == "b")
+                {
+                    perspective = Color.Black;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public static void OnPromotePawn(object obj, PromotePawnEventArgs args)
         {
             Console.WriteLine("-> Pawn promoted");
@@ -278,6 +322,8 @@ namespace tSHess
             Console.WriteLine("- Enter a move, e.g. e4, Nf3, O-O, exd6, axb8=Q.");
             Console.WriteLine("- Type moves to show legal moves.");
             Console.WriteLine("- Type hint to ask the engine for a suggested move.");
+            Console.WriteLine("- Type eval to print evaluation breakdown for the side to move.");
+            Console.WriteLine("- Type eval white or eval black to choose perspective.");
             Console.WriteLine("- Type mode to switch the current play mode.");
             Console.WriteLine("- Type engine to switch the engine (MTD/MTDv2).");
             Console.WriteLine("- Type new to start a new game.");
@@ -291,6 +337,8 @@ namespace tSHess
             Console.WriteLine("Autoplay options:");
             Console.WriteLine("- Press Enter to continue computer vs computer.");
             Console.WriteLine("- Type moves to show legal moves.");
+            Console.WriteLine("- Type eval to print evaluation breakdown for the side to move.");
+            Console.WriteLine("- Type eval white or eval black to choose perspective.");
             Console.WriteLine("- Type mode to switch the current play mode.");
             Console.WriteLine("- Type engine to switch the engine (MTD/MTDv2).");
             Console.WriteLine("- Type new to start a new game.");
@@ -466,6 +514,12 @@ namespace tSHess
                     continue;
                 }
 
+                if (TryParseEvaluationCommand(command,s.WhoToMove,out Color perspective))
+                {
+                    Console.WriteLine(s.GetEvaluationBreakdownString(perspective));
+                    continue;
+                }
+
                 bool parsed = false;
                 if (!parsed)
                 {
@@ -490,7 +544,7 @@ namespace tSHess
         {
             while (true)
             {
-                Console.Write("Autoplay command (Enter=continue, mode/new/auto on/auto off/quit/help): ");
+                Console.Write("Autoplay command (Enter=continue, mode/new/auto on/auto off/eval [white|black]/quit/help): ");
                 string input = Console.ReadLine();
                 string normalized = input == null ? "" : input.Trim().ToLowerInvariant();
 
@@ -503,6 +557,12 @@ namespace tSHess
                 if (normalized == "moves")
                 {
                     ShowLegalMoves(s);
+                    continue;
+                }
+
+                if (TryParseEvaluationCommand(normalized,s.WhoToMove,out Color perspective))
+                {
+                    Console.WriteLine(s.GetEvaluationBreakdownString(perspective));
                     continue;
                 }
 
