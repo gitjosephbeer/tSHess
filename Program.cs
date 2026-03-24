@@ -27,7 +27,7 @@ namespace tSHess
         internal enum EngineKind
         {
             MTD,
-            MTDv2
+            PVS
         }
 
         internal enum TurnAction
@@ -295,7 +295,7 @@ namespace tSHess
             {
                 Console.WriteLine("Choose engine:");
                 Console.WriteLine("  1 - MTD");
-                Console.WriteLine("  2 - MTDv2");
+                Console.WriteLine("  2 - PVS");
                 Console.Write("Selection: ");
 
                 string input = Console.ReadLine();
@@ -305,10 +305,10 @@ namespace tSHess
                     Console.WriteLine();
                     return EngineKind.MTD;
                 }
-                if (normalized == "2" || normalized == "mtdv2")
+                if (normalized == "2" || normalized == "pvs")
                 {
                     Console.WriteLine();
-                    return EngineKind.MTDv2;
+                    return EngineKind.PVS;
                 }
 
                 Console.WriteLine("Unknown engine. Please choose 1 or 2.");
@@ -325,7 +325,7 @@ namespace tSHess
             Console.WriteLine("- Type eval to print evaluation breakdown for the side to move.");
             Console.WriteLine("- Type eval white or eval black to choose perspective.");
             Console.WriteLine("- Type mode to switch the current play mode.");
-            Console.WriteLine("- Type engine to switch the engine (MTD/MTDv2).");
+            Console.WriteLine("- Type engine to switch the engine (MTD/PVS).");
             Console.WriteLine("- Type new to start a new game.");
             Console.WriteLine("- Type help to show this list of options.");
             Console.WriteLine("- Type quit to leave the game.");
@@ -340,7 +340,7 @@ namespace tSHess
             Console.WriteLine("- Type eval to print evaluation breakdown for the side to move.");
             Console.WriteLine("- Type eval white or eval black to choose perspective.");
             Console.WriteLine("- Type mode to switch the current play mode.");
-            Console.WriteLine("- Type engine to switch the engine (MTD/MTDv2).");
+            Console.WriteLine("- Type engine to switch the engine (MTD/PVS).");
             Console.WriteLine("- Type new to start a new game.");
             Console.WriteLine("- Type auto on to enable fast autoplay checkpoints.");
             Console.WriteLine("- Type auto off to disable fast autoplay checkpoints.");
@@ -393,8 +393,6 @@ namespace tSHess
             {
                 case EngineKind.MTD:
                     return "MTD";
-                case EngineKind.MTDv2:
-                    return "MTDv2";
                 default:
                     return engine.ToString();
             }
@@ -459,8 +457,8 @@ namespace tSHess
             Console.WriteLine();
             Console.WriteLine("Thinking...");
             Console.WriteLine();
-            if (engine == EngineKind.MTDv2)
-                return s.GetBestMoveMTDv2(openingBookSan, OpeningBookFormat.SanNotation);
+            if (engine == EngineKind.PVS)
+                return s.GetBestMovePVS(openingBookSan, OpeningBookFormat.SanNotation);
 
             return s.GetBestMoveMTD(openingBookSan, OpeningBookFormat.SanNotation);
         }
@@ -649,7 +647,7 @@ namespace tSHess
 
             Console.WriteLine("Welcom to tSHess!\n*****************\n\n");
             GameMode mode = GameMode.HumanVsComputer;
-            EngineKind engine = EngineKind.MTDv2;
+            EngineKind engine = EngineKind.MTD;
             Color humanColor = Color.White;
             bool fastAutoplay = false;
             const int fastAutoplayCheckpointMoves = 10;

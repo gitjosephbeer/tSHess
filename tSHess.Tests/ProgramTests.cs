@@ -96,9 +96,9 @@ namespace tSHess.Tests
         [Fact]
         public void FormatStatusLine_IncludesModeAndRoles()
         {
-            string statusLine = Program.FormatStatusLine(Program.GameMode.HumanVsComputer, Program.PlayerKind.Human, Program.PlayerKind.Computer, Program.EngineKind.MTDv2);
+            string statusLine = Program.FormatStatusLine(Program.GameMode.HumanVsComputer, Program.PlayerKind.Human, Program.PlayerKind.Computer, Program.EngineKind.MTD);
 
-            Assert.Equal("Mode: Human vs Computer | White: Human | Black: Computer | Engine: MTDv2", statusLine);
+            Assert.Equal("Mode: Human vs Computer | White: Human | Black: Computer | Engine: MTD", statusLine);
         }
 
         [Theory]

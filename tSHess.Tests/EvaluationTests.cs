@@ -68,20 +68,20 @@ namespace tSHess.Tests
         }
 
         [Fact]
-        public void GetBestMoveMTDv2_StalematePosition_ReturnsDrawEvaluation()
+        public void GetBestMoveMTD_StalematePosition_ReturnsDrawEvaluation()
         {
             SnapShot snapshot = SnapShot.FromFen("7k/5Q2/7K/8/8/8/8/8 b - - 0 1");
-            Move bestMove = snapshot.GetBestMoveMTDv2("openings.txt", OpeningBookFormat.CoordinateNotation);
+            Move bestMove = snapshot.GetBestMoveMTD("openings.txt", OpeningBookFormat.CoordinateNotation);
 
             Assert.NotNull(bestMove);
             Assert.Equal(0, bestMove.Evaluation);
         }
 
         [Fact]
-        public void GetBestMoveMTDv2_CheckmatedSideToMove_ReturnsLargeNegativeEvaluation()
+        public void GetBestMoveMTD_CheckmatedSideToMove_ReturnsLargeNegativeEvaluation()
         {
             SnapShot snapshot = SnapShot.FromFen("7k/6Q1/6K1/8/8/8/8/8 b - - 0 1");
-            Move bestMove = snapshot.GetBestMoveMTDv2("openings.txt", OpeningBookFormat.CoordinateNotation);
+            Move bestMove = snapshot.GetBestMoveMTD("openings.txt", OpeningBookFormat.CoordinateNotation);
 
             Assert.NotNull(bestMove);
             Assert.True(bestMove.Evaluation <= -29000);

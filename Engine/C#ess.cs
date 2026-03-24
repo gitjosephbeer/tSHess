@@ -1,4 +1,4 @@
-// project created on 15.03.2004 at 20:38
+﻿// project created on 15.03.2004 at 20:38
 
 /*
    internal (field numbers) and user view of the board:
@@ -1641,7 +1641,7 @@ namespace tSHess.Engine
 	public class SnapShot
 	{
 		private static BestMovePicker MTDPicker = new MTD();
-		private static BestMovePicker MTDPickerV2 = new MTDv2();
+		private static BestMovePicker PVSPicker = new PVS();
 //		private static BestMovePicker AlphaBetaPicker = new AlphaBeta();
 		private static Hashtable openingBooks = new Hashtable();
 
@@ -1649,7 +1649,7 @@ namespace tSHess.Engine
 	/// Abstract base class for chess move selection algorithms (engines).
 	/// 
 	/// Defines the common interface and shared infrastructure for search engines.
-	/// Subclasses implement concrete search strategies (e.g., MTDv2, simple alpha-beta, minimax).
+	/// Subclasses implement concrete search strategies (e.g., MTD, PVS).
 	/// 
 	/// Shared Components:
 	/// - TranspositionTable (tTable): Caches evaluated positions to avoid redundant computation
@@ -1712,6 +1712,131 @@ namespace tSHess.Engine
 			protected int moveCounter = 0;
 
 			/// <summary>
+			/// If true, outputs search progress information to console (depth, score, node count).
+			/// </summary>
+			public bool Verbose = false;
+
+			private int timeStampCounter = 0;
+
+			/// <summary>
+			/// Maximum search depth for each iteration.
+			/// </summary>
+			protected int maxIterationDepth = 15;
+
+			/// <summary>
+			/// Maximum total nodes (regular + quiescence) before search terminates.
+			/// </summary>
+			protected int maxSearchSize = 50000;
+
+			/// <summary>
+			/// Gets or sets the maximum search depth.
+			/// </summary>
+			public int MaxIterationDepth
+			{
+				get { return maxIterationDepth; }
+				set { maxIterationDepth = value; }
+			}
+
+			/// <summary>
+			/// Gets or sets the maximum search size (total number of nodes).
+			/// </summary>
+			public int MaxSearchSize
+			{
+				get { return maxSearchSize; }
+				set { maxSearchSize = value; }
+			}
+
+			/// <summary>
+			/// Generates the next unique timestamp for transposition table entries.
+			/// </summary>
+			protected int NextTimeStamp()
+			{
+				unchecked
+				{
+					timeStampCounter++;
+					if (timeStampCounter <= 0)
+						timeStampCounter = 1;
+					return timeStampCounter;
+				}
+			}
+
+			/// <summary>
+			/// Checks if two moves represent the same source and destination squares.
+			/// </summary>
+			protected bool IsSameMove(Move a, Move b)
+			{
+				if (a == null || b == null)
+					return false;
+				return a.FieldNumberFrom == b.FieldNumberFrom && a.FieldNumberTo == b.FieldNumberTo;
+			}
+
+			/// <summary>
+			/// Evaluates positions with no legal moves (checkmate or stalemate).
+			/// </summary>
+			protected int EvaluateNoLegalMoves(bool nodeType, SnapShot snapShot, int depth)
+			{
+				int ownKingField = snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField;
+				bool inCheck = snapShot.IsFieldChecked(ownKingField)
+					|| (snapShot.history != null
+					&& snapShot.history.Count > 0
+					&& snapShot.history[snapShot.history.Count-1].OpponentSituationCode == SituationCode.Check);
+				if (!inCheck)
+					return 0;
+				if (nodeType == MAXNODE)
+					return ALPHABETA_MINVAL + depth;
+				return ALPHABETA_MAXVAL - depth;
+			}
+
+			/// <summary>
+			/// Checks if a position is drawn by any rule.
+			/// </summary>
+			protected bool IsDrawnPosition(SnapShot snapShot)
+			{
+				return snapShot.IsDrawByInsufficientMaterial() || snapShot.IsDrawByRepetition() || snapShot.IsDrawByFiftyMoveRule();
+			}
+
+			/// <summary>
+			/// Calculates move ordering score. Higher scores are searched first to maximise pruning.
+			/// Prioritises: TT move, PV move, MVV/LVA captures, history heuristic.
+			/// </summary>
+			protected int GetMoveOrderingScore(SnapShot snapShot, Move move, Move ttMove, Move pvMove, bool capturesOnly)
+			{
+				int score = hTable.GetScore(snapShot.whoToMove, move);
+				if (IsSameMove(move, ttMove))
+					score += 2_000_000;
+				if (IsSameMove(move, pvMove))
+					score += 1_000_000;
+				if (capturesOnly || move.PieceHit != PieceType.None)
+				{
+					int capturedValue = move.PieceHit == PieceType.None ? 0 : Helper.PieceType2Value(move.PieceHit);
+					int movingValue = Helper.PieceType2Value((PieceType)(snapShot.situation[move.FieldNumberFrom] & 0x07));
+					score += capturedValue * 10 - movingValue;
+				}
+				return score;
+			}
+
+			/// <summary>
+			/// Generates a sorted list of legal moves for the given position.
+			/// </summary>
+			protected List<Move> GetOrderedMoves(SnapShot snapShot, bool capturesOnly, Move ttMove, Move pvMove)
+			{
+				List<Move> ordered = new List<Move>(snapShot.legalMoves.Count);
+				for (int i = 0; i < snapShot.legalMoves.Count; i++)
+				{
+					Move move = snapShot.legalMoves[i];
+					if (!capturesOnly || move.PieceHit != PieceType.None)
+						ordered.Add(move);
+				}
+				ordered.Sort((left, right) =>
+				{
+					int rightScore = GetMoveOrderingScore(snapShot, right, ttMove, pvMove, capturesOnly);
+					int leftScore = GetMoveOrderingScore(snapShot, left, ttMove, pvMove, capturesOnly);
+					return rightScore.CompareTo(leftScore);
+				});
+				return ordered;
+			}
+
+			/// <summary>
 			/// Initializes a new move picker base instance with shared search infrastructure.
 			/// </summary>
 			public BestMovePicker()
@@ -1722,7 +1847,7 @@ namespace tSHess.Engine
 			// int AlphaBeta
 			// The basic alpha-beta algorithm, used in one disguise or another by
 			// every search agent class
-			protected int AlphaBeta(bool nodeType, SnapShot snapShot, int depth, int alpha, int beta)
+			protected int AlphaBeta(bool nodeType, SnapShot snapShot, int depth, int alpha, int beta, Move pvMove)
 			{
 				Move move = new Move();
 
@@ -1758,11 +1883,9 @@ namespace tSHess.Engine
 					}
 				}
 
-				// If we have reached the maximum depth of the search, stop recursion
-				// and begin quiescence search
 				if (depth == 0)
 				{
-					return QuiescenceSearch(nodeType,snapShot,maxQuiescenceDepth,alpha,beta);
+					return QuiescenceSearch(nodeType,snapShot,maxQuiescenceDepth,alpha,beta, pvMove);
 				}
 
 				snapShot.CalculateLegalMoves();
@@ -1787,7 +1910,7 @@ namespace tSHess.Engine
 						snapShot.PerformMove(move,true);
 moveCounter++;
 						// And search it in turn
-						int moveScore = AlphaBeta(!nodeType,snapShot,depth-1,currentAlpha,beta);
+						int moveScore = AlphaBeta(!nodeType,snapShot,depth-1,currentAlpha,beta, pvMove);
 moveCounter--;
 						snapShot.Rollback(1);
 
@@ -1841,7 +1964,7 @@ moveCounter--;
 						snapShot.PerformMove(move,true);
 moveCounter++;
 						// And search it in turn
-						int moveScore = AlphaBeta(!nodeType,snapShot,depth-1,alpha,currentBeta);
+						int moveScore = AlphaBeta(!nodeType,snapShot,depth-1,alpha,currentBeta, pvMove);
 moveCounter--;
 						snapShot.Rollback(1);
 
@@ -1894,7 +2017,7 @@ moveCounter--;
 			/// <param name="alpha">Alpha lower bound.</param>
 			/// <param name="beta">Beta upper bound.</param>
 			/// <returns>Quiescence evaluation score.</returns>
-			public int QuiescenceSearch(bool nodeType, SnapShot snapShot, int depth, int alpha, int beta)
+			public int QuiescenceSearch(bool nodeType, SnapShot snapShot, int depth, int alpha, int beta, Move pvMove)
 			{
 				Move move = new Move();
 				numQuiescenceNodes++;
@@ -1971,7 +2094,7 @@ moveCounter--;
 						snapShot.PerformMove(move,true);
 moveCounter++;
 						// And search it in turn
-						int moveScore = QuiescenceSearch(!nodeType,snapShot,depth-1,currentAlpha,beta);
+						int moveScore = QuiescenceSearch(!nodeType,snapShot,depth-1,currentAlpha,beta, pvMove);
 moveCounter--;
 						snapShot.Rollback(1);
 
@@ -2017,7 +2140,7 @@ moveCounter--;
 						// Compute a board position resulting from the current successor
 						snapShot.PerformMove(move,true);
 moveCounter++;
-						int moveScore = QuiescenceSearch(!nodeType,snapShot,depth-1,alpha,currentBeta);
+						int moveScore = QuiescenceSearch(!nodeType,snapShot,depth-1,alpha,currentBeta, pvMove);
 moveCounter--;
 						snapShot.Rollback(1);
 
@@ -2190,267 +2313,7 @@ moveCounter--;
 */
 
 		/// <summary>
-		/// Legacy MTD(f) search engine implementation kept for comparison/backward compatibility.
-		/// </summary>
-		public class MTD : BestMovePicker
-		{
-			// A measure of the effort we are willing to expend on search
-			/// <summary>
-			/// Gets or sets the maximum quiescence search depth for the legacy MTD engine.
-			/// </summary>
-			public int MaxQuiescenceDepth
-			{
-				get
-				{
-					return maxQuiescenceDepth;
-				}
-				set
-				{
-					maxQuiescenceDepth = value;
-				}
-			}
-
-			private int maxIterationDepth = 15;
-			public int MaxIterationDepth
-			{
-				get
-				{
-					return maxIterationDepth;
-				}
-				set
-				{
-					maxIterationDepth = value;
-				}
-			}
-
-			private int maxSearchSize = 50000;
-			public int MaxSearchSize
-			{
-				get
-				{
-					return maxSearchSize;
-				}
-				set
-				{
-					maxSearchSize = value;
-				}
-			}
-
-			/// <summary>
-			/// Initializes a legacy MTD search engine instance.
-			/// </summary>
-			public MTD() : base()
-			{
-			}
-
-			// Move selection: An iterative-deepening paradigm calling MTD(f) repeatedly
-			public override Move GetBestMove(SnapShot snapShot, OpeningBook openings)
-			{
-				Console.WriteLine("Getting best move by MTD algorithm...");
-
-				// First things first: look in the Opening Book, and if it contains a
-				// move for this position, don't search anything
-				moveCounter++;
-				Move move = null;
-				if (openings != null)
-				{
-					move = openings.Query(snapShot);
-					if (move != null )
-						return move;
-				}
-
-				// Store the identity of the moving side, so that we can tell Evaluator
-				// from whose perspective we need to evaluate positions
-				fromWhosePerspective = snapShot.whoToMove;
-
-				// Should we erase the history table?
-				if ((Helper.RandomNumber() % 6) == 2)
-					hTable.Clear();
-
-				// Begin search.  The search's maximum depth is determined on the fly,
-				// according to how much effort has been spent; if it's possible to search
-				// to depth 8 in 5 seconds, then by all means, do it!
-				int bestGuess = 0;
-				int iterdepth = 1;
-
-				while (true)
-				{
-					// Searching to depth 1 is not very effective, so we begin at 2
-					iterdepth++;
-
-					// Compute efficiency statistics
-					numRegularNodes = 0;
-					numQuiescenceNodes = 0;
-					numRegularTTHits = 0;
-					numQuiescenceTTHits = 0;
-					numRegularCutoffs = 0;
-					numQuiescenceCutoffs = 0;
-
-					// Look for a move at the current depth
-					move = MTD_f(snapShot,bestGuess,iterdepth);
-					bestGuess = move.Evaluation;
-
-					// Feedback!
-					Console.WriteLine("Iteration of depth " + iterdepth + "; best move = " + move.ToString());
-					Console.Write("  --> Transposition Table hits for regular nodes: ");
-					Console.WriteLine(numRegularTTHits + " of " + numRegularNodes);
-					Console.Write("  --> Transposition Table hits for quiescence nodes: ");
-					Console.WriteLine(numQuiescenceTTHits + " of " + numQuiescenceNodes);
-					Console.WriteLine("  --> Number of cutoffs for regular nodes: " + numRegularCutoffs);
-					Console.WriteLine("  --> Number of cutoffs in quiescence search: " + numQuiescenceCutoffs);
-
-					// Get out if we have searched deep enough
-					if ((numRegularNodes + numQuiescenceNodes ) >= maxSearchSize)
-						break;
-					if (iterdepth >= maxIterationDepth)
-						break;
-				}
-
-				return move;
-			}
-
-			// Use the MTD algorithm to find a good move.  MTD repeatedly calls
-			// alphabeta with a zero-width search window, which creates very many quick
-			// cutoffs.  If alphabeta fails low, the next call will place the search
-			// window lower; in a sense, MTD is a sort of binary search mechanism into
-			// the minimax space.
-			private Move MTD_f(SnapShot snapShot, int target, int depth)
-			{
-				int beta;
-				Move move;
-				int currentEstimate = target;
-				int upperbound = ALPHABETA_MAXVAL;
-				int lowerbound = ALPHABETA_MINVAL;
-
-				// This is the trick: make repeated calls to alphabeta, zeroing in on the
-				// actual minimax value of theBoard by narrowing the bounds
-				do 
-				{
-					if (currentEstimate == lowerbound)
-						beta = currentEstimate+1;
-					else
-						beta = currentEstimate;
-
-					move = UnrolledAlphaBeta(snapShot,depth,beta-1,beta);
-					currentEstimate = move.Evaluation;
-
-					if (currentEstimate < beta)
-						upperbound = currentEstimate;
-					else
-						lowerbound = currentEstimate;
-
-				} while (lowerbound < upperbound);
-
-				return move;
-			}
-
-			// The standard alphabeta, with the top level "unrolled" so that it can
-			// return a Move structure instead of a mere minimax value
-			// See BestMovePicker.AlphaBeta for detailed comments on this code
-			private Move UnrolledAlphaBeta(SnapShot snapShot, int depth, int alpha, int beta)
-			{
-				Move bestMove = null;
-
-				snapShot.CalculateLegalMoves();
-
-				snapShot.legalMoves.Sort(snapShot.whoToMove);
-
-				int bestSoFar = ALPHABETA_MINVAL;
-				int currentAlpha = alpha;
-
-				Move move = null;
-
-				// Loop on the successors
-				for (int i = 0; i < snapShot.legalMoves.Count; i++)
-				{
-					move = snapShot.legalMoves[i];
-
-					snapShot.PerformMove(move,true);
-moveCounter++;
-					// And search it in turn
-					int moveScore = AlphaBeta(MINNODE,snapShot,depth-1,currentAlpha,beta);
-moveCounter--;
-					snapShot.Rollback(1);
-
-					currentAlpha = Math.Max(currentAlpha,moveScore);
-
-					// Is the current successor better than the previous best?
-					if ( moveScore > bestSoFar)
-					{
-						bestMove = move.Clone();
-						bestSoFar = moveScore;
-						bestMove.Evaluation = bestSoFar;
-
-						// Can we cutoff now?
-						if (bestSoFar >= beta)
-						{
-							tTable.StoreSnapShot(snapShot,bestSoFar,EvaluationType.Upperbound,depth,moveCounter);
-
-							// Add this move's efficiency in the HistoryTable
-							hTable.AddMove(snapShot.whoToMove,move);
-							return bestMove;
-						}
-					}
-				}
-
-				// Test for checkmate or stalemate
-				if (bestSoFar <= ALPHABETA_GIVEUP)
-				{
-					if (snapShot.legalMoves.Count > 0)
-					{
-						bool bGameOverPossible = false;
-						for (int i = 0; i < snapShot.legalMoves.Count; i++)
-						{
-							move = snapShot.legalMoves[i];
-
-							snapShot.PerformMove(move);
-
-							for (int j = 0; j < snapShot.legalMoves.Count; j++)
-							{
-								move = snapShot.legalMoves[j];
-
-								snapShot.PerformMove(move);
-								if (snapShot.legalMoves.Count == 0)
-									bGameOverPossible = true;
-
-								snapShot.Rollback(1);
-
-								if (bGameOverPossible)
-									break;
-							}
-
-							snapShot.Rollback(1);
-
-							if (bGameOverPossible)
-								break;
-						}
-						if (bGameOverPossible)
-						{
-							bestMove = new Move(snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField,snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField);
-							bestMove.PieceType = PieceType.King;
-							bestMove.MoveCode = MoveCode.Resign;
-						}
-					}
-					else
-					{
-						// We're in check and our best hope is GIVEUP or worse, so either we are
-						// already checkmated or will be soon, without hope of escape
-						bestMove = new Move(snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField,snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField);
-						bestMove.PieceType = PieceType.King;
-						bestMove.MoveCode = MoveCode.Resign;
-					}
-				}
-
-				// If we haven't returned yet, we have found an accurate minimax score
-				// for a position which is neither a checkmate nor a stalemate
-				tTable.StoreSnapShot(snapShot,bestSoFar,EvaluationType.Accurate,depth,moveCounter);
-
-				return bestMove;
-			}
-		}
-
-		/// <summary>
-	/// MTDv2 (Memory-enhanced Test Driver with 2 calls per iteration) is an iterative-deepening MTD(f) search engine.
+	/// MTD (Memory-enhanced Test Driver) is an iterative-deepening MTD(f) search engine.
 	/// 
 	/// This engine uses the MTD(f) algorithm (also known as Conspiracy Number Search) which performs zero-width
 	/// alpha-beta searches with iteratively refined upper and lower bounds to narrow the search window. This approach
@@ -2469,190 +2332,13 @@ moveCounter--;
 	/// 
 	/// Search Pipeline: Iterative Deepening → MTD(f) → UnrolledAlphaBeta → AlphaBeta → QuiescenceSearch → Terminal Evaluation
 	/// </summary>
-	public class MTDv2 : BestMovePicker
+	public class MTD : BestMovePicker
 		{
 			/// <summary>
-			/// If true, outputs search progress information to console (depth, score, node count).
+			/// Initializes a new MTD search engine instance.
 			/// </summary>
-			public bool Verbose = false;
-			
-			private int timeStampCounter = 0;
-			
-			/// <summary>
-			/// Maximum search depth for each iteration. Search continues iteratively
-			/// from depth 2 to this value (in steps of 2) until time/node limits are reached.
-			/// Default: 15 (approximately 8 iterations from d=2 to d=14).
-			/// </summary>
-			private int maxIterationDepth = 15;
-			
-			/// <summary>
-			/// Maximum total nodes (regular + quiescence) before search terminates.
-			/// Includes both regular alpha-beta nodes and quiescence search nodes.
-			/// Default: 50000 nodes.
-			/// </summary>
-			private int maxSearchSize = 50000;
-
-			/// <summary>
-			/// Gets or sets the maximum search depth.
-			/// Search runs iteratively from depth 2, incrementing by 2 until this limit is reached.
-			/// </summary>
-			public int MaxIterationDepth
+			public MTD() : base()
 			{
-				get { return maxIterationDepth; }
-				set { maxIterationDepth = value; }
-			}
-
-			/// <summary>
-			/// Gets or sets the maximum search size (total number of nodes across all search layers).
-			/// Search terminates when either maxIterationDepth iterations complete or total nodes exceed this limit.
-			/// </summary>
-			public int MaxSearchSize
-			{
-				get { return maxSearchSize; }
-				set { maxSearchSize = value; }
-			}
-			/// <summary>
-			/// Generates the next unique timestamp for transposition table entries.
-			/// Used to manage aging of entries in the transposition table.
-			/// </summary>
-			/// <returns>A unique timestamp value (monotonically increasing).</returns>
-			private int NextTimeStamp()
-			{
-				unchecked
-				{
-					timeStampCounter++;
-					if (timeStampCounter <= 0)
-						timeStampCounter = 1;
-					return timeStampCounter;
-				}
-			}
-
-			/// <summary>
-			/// Checks if two moves represent the same source and destination squares.
-			/// Handles null moves gracefully.
-			/// </summary>
-			/// <param name="a">First move to compare.</param>
-			/// <param name="b">Second move to compare.</param>
-			/// <returns>True if both moves have identical from/to field numbers; false if either is null or different.</returns>
-			private bool IsSameMove(Move a, Move b)
-			{
-				if (a == null || b == null)
-					return false;
-				return a.FieldNumberFrom == b.FieldNumberFrom && a.FieldNumberTo == b.FieldNumberTo;
-			}
-
-			/// <summary>
-			/// Evaluates positions with no legal moves (checkmate or stalemate).
-			/// 
-			/// Checkmate: Side to move is in check and has no legal moves.
-			/// Returns negative values (losing) for MAXNODE (side to move loses)
-			/// and positive values (winning) for MINNODE (side to move wins from opponent's perspective).
-			/// Values increase by depth to prefer faster mates.
-			/// 
-			/// Stalemate: Side to move is not in check and has no legal moves.
-			/// Returns 0 (draw evaluation).
-			/// </summary>
-			/// <param name="nodeType">MAXNODE for nodes where computer is to move; MINNODE for opponent.</param>
-			/// <param name="snapShot">Current board position.</param>
-			/// <param name="depth">Current search depth (used to score faster mates higher).</param>
-			/// <returns>
-			/// Checkmate: ALPHABETA_MINVAL + depth (negative for MAXNODE), or ALPHABETA_MAXVAL - depth (positive for MINNODE).
-			/// Stalemate: 0.
-			/// </returns>
-			private int EvaluateNoLegalMoves(bool nodeType, SnapShot snapShot, int depth)
-			{
-				int ownKingField = snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField;
-				bool inCheck = snapShot.IsFieldChecked(ownKingField)
-					|| (snapShot.history != null
-					&& snapShot.history.Count > 0
-					&& snapShot.history[snapShot.history.Count-1].OpponentSituationCode == SituationCode.Check);
-
-				if (!inCheck)
-					return 0;
-
-				if (nodeType == MAXNODE)
-					return ALPHABETA_MINVAL + depth;
-
-				return ALPHABETA_MAXVAL - depth;
-			}
-
-			/// <summary>
-			/// Checks if a position is drawn by any rule (insufficient material, threefold repetition, or fifty-move rule).
-			/// Used to short-circuit search and return 0 evaluation for drawn positions.
-			/// </summary>
-			/// <param name="snapShot">Current board position to evaluate.</param>
-			/// <returns>True if the position is drawn by any applicable rule; false otherwise.</returns>
-			private bool IsDrawnPosition(SnapShot snapShot)
-			{
-				return snapShot.IsDrawByInsufficientMaterial() || snapShot.IsDrawByRepetition() || snapShot.IsDrawByFiftyMoveRule();
-			}
-
-			/// <summary>
-			/// Calculates move ordering score for move ordering heuristic.
-			/// Higher scores should be searched first (best move first) to maximize alpha-beta pruning.
-			/// 
-			/// Prioritizes moves in this order:
-			/// 1. Transposition table move (best known move from previous search)
-			/// 2. Principal variation move (from iterative deepening)
-			/// 3. Captures ordered by MVV/LVA (Most Valuable Victim / Least Valuable Attacker)
-			/// 4. Non-capture moves from killer move / history table
-			/// </summary>
-			/// <param name="snapShot">Current position for context.</param>
-			/// <param name="move">Move to score.</param>
-			/// <param name="ttMove">Best move from transposition table (if any).</param>
-			/// <param name="pvMove">Principal variation move from iterative deepening (if any).</param>
-			/// <param name="capturesOnly">If true, only score captures (ignore non-captures).</param>
-			/// <returns>Score for move ordering (higher = better).</returns>
-			private int GetMoveOrderingScore(SnapShot snapShot, Move move, Move ttMove, Move pvMove, bool capturesOnly)
-			{
-				int score = hTable.GetScore(snapShot.whoToMove,move);
-
-				if (IsSameMove(move,ttMove))
-					score += 2_000_000;
-
-				if (IsSameMove(move,pvMove))
-					score += 1_000_000;
-
-				if (capturesOnly || move.PieceHit != PieceType.None)
-				{
-					int capturedValue = move.PieceHit == PieceType.None ? 0 : Helper.PieceType2Value(move.PieceHit);
-					int movingValue = Helper.PieceType2Value((PieceType)(snapShot.situation[move.FieldNumberFrom] & 0x07));
-					score += capturedValue * 10 - movingValue;
-				}
-
-				return score;
-			}
-
-			/// <summary>
-			/// Generates a sorted list of legal moves for the given position.
-			/// Moves are sorted by move ordering score to improve alpha-beta pruning efficiency.
-			/// 
-			/// If capturesOnly=false, includes all legal moves.
-			/// If capturesOnly=true, includes only capturing moves (used in quiescence search).
-			/// </summary>
-			/// <param name="snapShot">Current board position.</param>
-			/// <param name="capturesOnly">If true, return only capturing moves; if false, return all legal moves.</param>
-			/// <param name="ttMove">Transposition table move (searched first if present).</param>
-			/// <param name="pvMove">Principal variation move (searched early for refutation).</param>
-			/// <returns>List of legal moves sorted by estimated value (best-first order).</returns>
-			private List<Move> GetOrderedMoves(SnapShot snapShot, bool capturesOnly, Move ttMove, Move pvMove)
-			{
-				List<Move> ordered = new List<Move>(snapShot.legalMoves.Count);
-				for (int i = 0; i < snapShot.legalMoves.Count; i++)
-				{
-					Move move = snapShot.legalMoves[i];
-					if (!capturesOnly || move.PieceHit != PieceType.None)
-						ordered.Add(move);
-				}
-
-				ordered.Sort((left,right) =>
-				{
-					int rightScore = GetMoveOrderingScore(snapShot,right,ttMove,pvMove,capturesOnly);
-					int leftScore = GetMoveOrderingScore(snapShot,left,ttMove,pvMove,capturesOnly);
-					return rightScore.CompareTo(leftScore);
-				});
-
-				return ordered;
 			}
 
 			/// <summary>
@@ -2928,6 +2614,15 @@ moveCounter--;
 				if (depth == 0)
 					return QuiescenceSearch(nodeType,snapShot,maxQuiescenceDepth,alpha,beta,pvMove);
 
+				// Null move pruning
+				if (nodeType == MAXNODE && depth > 2 && beta < 10000) // not mate score
+				{
+					int nullReduction = depth > 6 ? 3 : 2;
+					int nullScore = AlphaBeta(MINNODE, snapShot, depth - nullReduction, beta - 1, beta, null);
+					if (nullScore >= beta)
+						return nullScore;
+				}
+
 				snapShot.CalculateLegalMoves();
 				Move ttMove = new Move();
 				if (!tTable.LookupBoard(snapShot,ttMove) || ttMove.FieldNumberFrom < 0)
@@ -2938,15 +2633,37 @@ moveCounter--;
 				if (orderedMoves.Count == 0)
 					return EvaluateNoLegalMoves(nodeType,snapShot,depth);
 
+				// Futility pruning for shallow depths
+				int staticEval = (snapShot.EvaluateComplete(fromWhosePerspective) >> 3) << 3;
+				if (depth == 1 && nodeType == MAXNODE && staticEval + 200 < alpha)
+					return staticEval;
+				if (depth == 1 && nodeType == MINNODE && staticEval - 200 > beta)
+					return staticEval;
+
+				// Razoring
+				if (depth <= 3 && nodeType == MAXNODE && staticEval + 300 + 100 * depth < alpha)
+					return QuiescenceSearch(nodeType, snapShot, maxQuiescenceDepth, alpha, beta, pvMove);
+
 				int bestSoFar = nodeType == MAXNODE ? ALPHABETA_MINVAL : ALPHABETA_MAXVAL;
 				Move bestMove = null;
 
 				for (int i = 0; i < orderedMoves.Count; i++)
 				{
 					Move move = orderedMoves[i];
+					int reduction = 0;
+					if (i >= 4 && depth > 2 && move.PieceHit == PieceType.None)
+					{
+						reduction = depth > 6 ? 2 : 1;
+					}
 					snapShot.PerformMove(move,true);
 					moveCounter++;
-					int moveScore = AlphaBeta(nodeType == MAXNODE ? MINNODE : MAXNODE,snapShot,depth - 1,alpha,beta,pvMove);
+					int searchDepth = Math.Max(1, depth - 1 - reduction);
+					int moveScore = AlphaBeta(nodeType == MAXNODE ? MINNODE : MAXNODE,snapShot,searchDepth,alpha,beta,pvMove);
+					// Re-search with full depth if reduced and score is good
+					if (reduction > 0 && moveScore > alpha && moveScore < beta)
+					{
+						moveScore = AlphaBeta(nodeType == MAXNODE ? MINNODE : MAXNODE,snapShot,depth - 1,alpha,beta,pvMove);
+					}
 					moveCounter--;
 					snapShot.Rollback(1);
 
@@ -3124,6 +2841,635 @@ moveCounter--;
 				return bestSoFar;
 			}
 		}
+
+		/// <summary>
+		/// PVS (Principal Variation Search) is an iterative-deepening alpha-beta search engine.
+		/// 
+		/// This engine uses the Principal Variation Search algorithm, a more efficient variant of alpha-beta
+		/// that exploits the fact that the first move searched is likely the best. It searches the principal
+		/// variation with a full window, then uses null-window searches for other moves.
+		/// 
+		/// Key features:
+		/// - Iterative deepening from depth 2 to maxIterationDepth (default 15), incrementing by 2 each iteration
+		/// - PVS root search with full window for first move, null window for others
+		/// - Recursive alpha-beta search with transposition table cutoffs
+		/// - Quiescence search for tactical positions (captures and checks only)
+		/// - Complete game-phase evaluation with endgame heuristics
+		/// - Draw detection (insufficient material, threefold repetition, fifty-move rule)
+		/// - Move ordering via transposition table, principal variation, and history heuristic
+		/// 
+		/// Search Pipeline: Iterative Deepening → PVS Root → AlphaBeta → QuiescenceSearch → Terminal Evaluation
+		/// </summary>
+		public class PVS : BestMovePicker
+		{
+			/// <summary>
+			/// Gets or sets the maximum quiescence search depth for the PVS engine.
+			/// </summary>
+			public int MaxQuiescenceDepth
+			{
+				get { return maxQuiescenceDepth; }
+				set { maxQuiescenceDepth = value; }
+			}
+
+			/// <summary>
+			/// Initializes a PVS search engine instance.
+			/// </summary>
+			// Killer heuristic: store up to 2 quiet moves per depth that caused a beta cutoff
+			private const int MAX_KILLER_DEPTH = 32;
+			private Move[,] killerMoves = new Move[MAX_KILLER_DEPTH, 2];
+
+			/// <summary>Stores a quiet move as a killer at the given depth.</summary>
+			private void StoreKiller(int depth, Move move)
+			{
+				if (depth < 0 || depth >= MAX_KILLER_DEPTH)
+					return;
+				if (move == null || move.PieceHit != PieceType.None)
+					return; // only quiet moves
+				if (killerMoves[depth, 0] != null && IsSameMove(killerMoves[depth, 0], move))
+					return; // already stored
+				killerMoves[depth, 1] = killerMoves[depth, 0];
+				killerMoves[depth, 0] = move.Clone();
+			}
+
+			/// <summary>Returns a bonus for a killer move (0 if not a killer).</summary>
+			private int KillerBonus(int depth, Move move)
+			{
+				if (depth < 0 || depth >= MAX_KILLER_DEPTH || move == null)
+					return 0;
+				if (killerMoves[depth, 0] != null && IsSameMove(killerMoves[depth, 0], move))
+					return 500_000;
+				if (killerMoves[depth, 1] != null && IsSameMove(killerMoves[depth, 1], move))
+					return 400_000;
+				return 0;
+			}
+
+			public PVS() : base()
+			{
+			}
+
+			/// <summary>
+			/// Finds the best move for the given position using iterative deepening PVS search with advanced enhancements.
+			/// 
+			/// Algorithm Overview:
+			/// 1. Checks opening book for known moves (if available)
+			/// 2. Performs iterative deepening with incrementing depths (2, 4, 6, ..., maxIterationDepth)
+			/// 3. For each depth, uses PVS to search with full window for PV, null window for others
+			/// 4. Returns the best move found before depth/node limits are exceeded
+			/// 5. Falls back to depth-2 search if all iterations fail
+			/// 
+			/// Advanced Techniques:
+			/// - **Aspiration Windows**: Each iteration (after depth 2) opens with a narrow ±50 cp window around
+			///   the previous iteration's best score. Speeds up convergence when score is near the prior estimate.
+			///   If search fails-high or fails-low outside the window, re-searches with full window.
+			/// - **Killer Heuristic**: Quiet moves that cause beta cutoffs are recorded per depth, improving
+			///   move ordering in sibling positions (expected 10-15% node reduction).
+			/// - **Check Extensions**: When the side to move is in check (forced response), depth is extended by 1
+			///   to ensure accurate tactical evaluation and prevent horizon effects.
+			/// 
+			/// Search terminates when either:
+			/// - Maximum iteration depth is reached, OR
+			/// - Total nodes (regular + quiescence) exceeds maxSearchSize
+			/// 
+			/// Transposition table is cleared at depth >= 12 to manage memory and reduce stale entries.
+			/// </summary>
+			/// <param name="snapShot">Current board position to analyze.</param>
+			/// <param name="openings">Opening book for move lookup; can be null.</param>
+			/// <returns>
+			/// The best move found by search, with Evaluation field set to the estimated position value.
+			/// Returns a king move to self if no legal moves exist (resign indicator).
+			/// </returns>
+			public override Move GetBestMove(SnapShot snapShot, OpeningBook openings)
+			{
+				numRegularNodes = 0;
+				numQuiescenceNodes = 0;
+				numRegularCutoffs = 0;
+				numRegularTTHits = 0;
+				numQuiescenceTTHits = 0;
+				moveCounter++;
+
+				if (openings != null)
+				{
+					Move openingMove = openings.Query(snapShot);
+					if (openingMove != null)
+						return openingMove;
+				}
+
+				Move bestMove = null;
+				Move pvMove = null;
+				int bestGuess = 0;
+				Color fromWhosePerspective = snapShot.whoToMove;
+				this.fromWhosePerspective = fromWhosePerspective;
+
+				const int ASPIRATION_DELTA = 50;
+				for (int iterationDepth = 2; iterationDepth <= maxIterationDepth && (numRegularNodes + numQuiescenceNodes) < maxSearchSize; iterationDepth += 2)
+				{
+					if (iterationDepth >= 12)
+						hTable.Clear();
+
+					// Aspiration windows: start with a narrow window around previous best score.
+					// Widen to full window on a fail-low or fail-high.
+					int aspAlpha = iterationDepth > 2 ? bestGuess - ASPIRATION_DELTA : ALPHABETA_MINVAL;
+					int aspBeta  = iterationDepth > 2 ? bestGuess + ASPIRATION_DELTA : ALPHABETA_MAXVAL;
+					Move candidate = PVSRoot(snapShot, iterationDepth, aspAlpha, aspBeta, pvMove);
+					if (candidate != null && (candidate.Evaluation <= aspAlpha || candidate.Evaluation >= aspBeta))
+					{
+						// Failed outside window — re-search with full window
+						candidate = PVSRoot(snapShot, iterationDepth, ALPHABETA_MINVAL, ALPHABETA_MAXVAL, pvMove);
+					}
+					if (candidate == null)
+						break;
+
+					bestMove = candidate;
+					bestGuess = candidate.Evaluation;
+					pvMove = candidate.Clone();
+
+					if (Verbose)
+					{
+						int cp = fromWhosePerspective == Color.White ? bestMove.Evaluation : -bestMove.Evaluation;
+						Console.WriteLine("d=" + iterationDepth + " score=" + cp + " nodes=" + (numRegularNodes + numQuiescenceNodes));
+					}
+				}
+
+				if (bestMove == null)
+					bestMove = PVSRoot(snapShot, 2, ALPHABETA_MINVAL, ALPHABETA_MAXVAL, pvMove);
+
+				if (bestMove == null)
+					bestMove = new Move(snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField, snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField);
+
+				moveCounter--;
+				return bestMove;
+			}
+
+			/// <summary>
+			/// PVS root search with aspiration windows - searches moves with full window for first move, null window for others.
+			/// 
+			/// **Aspiration Windows Technique**:
+			/// Each iteration (after the first at depth 2) receives alpha and beta bounds from the iterative deepening loop,
+			/// where alpha = prior_score - 50 cp and beta = prior_score + 50 cp. This narrow window accelerates the search
+			/// by reducing the overhead of computing precise alpha-beta bounds in similar positions.
+			/// If the search result falls outside [alpha, beta], the caller re-searches with full bounds [MINVAL, MAXVAL].
+			/// 
+			/// **Root Search with Killer Moves**:
+			/// At the root, the first move is searched with the full [alpha, beta] window to obtain an accurate primary
+			/// variation estimate. Subsequent moves are searched with null windows [alpha, alpha+1] for efficiency,
+			/// and re-searched with full window if they might exceed alpha. Killer moves (quiet cutoff moves from sibling
+			/// nodes) are integrated into move ordering here via StoreKiller() at cutoff nodes.
+			/// </summary>
+			/// <param name="snapShot">Current position.</param>
+			/// <param name="depth">Search depth.</param>
+			/// <param name="alpha">Initial alpha (aspiration lower bound from iterative deepening).</param>
+			/// <param name="beta">Initial beta (aspiration upper bound from iterative deepening).</param>
+			/// <param name="pvMove">PV move from previous iteration.</param>
+			/// <returns>Best move found.</returns>
+			private Move PVSRoot(SnapShot snapShot, int depth, int alpha, int beta, Move pvMove)
+			{
+				snapShot.CalculateLegalMoves();
+
+				Move ttMove = new Move();
+				if (!tTable.LookupBoard(snapShot, ttMove) || ttMove.FieldNumberFrom < 0)
+					ttMove = null;
+
+				List<Move> orderedMoves = GetOrderedMoves(snapShot, false, ttMove, pvMove);
+				if (orderedMoves.Count == 0)
+				{
+					int terminal = EvaluateNoLegalMoves(MAXNODE, snapShot, depth);
+					Move noMove = new Move(snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField, snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField);
+					noMove.PieceType = PieceType.King;
+					noMove.MoveCode = MoveCode.Resign;
+					noMove.Evaluation = terminal;
+					tTable.StoreSnapShot(snapShot, terminal, EvaluationType.Accurate, depth, NextTimeStamp(), noMove);
+					return noMove;
+				}
+
+				int bestSoFar = ALPHABETA_MINVAL;
+				Move bestMove = null;
+
+				for (int i = 0; i < orderedMoves.Count; i++)
+				{
+					Move move = orderedMoves[i];
+					snapShot.PerformMove(move, true);
+					moveCounter++;
+
+					int moveScore;
+					if (i == 0)
+					{
+						// First move: full window search
+						moveScore = AlphaBeta(MINNODE, snapShot, depth - 1, alpha, beta, pvMove);
+					}
+					else
+					{
+						// Other moves: null window search
+						moveScore = AlphaBeta(MINNODE, snapShot, depth - 1, alpha, alpha + 1, pvMove);
+						if (moveScore > alpha && moveScore < beta)
+						{
+							// Re-search with full window
+							moveScore = AlphaBeta(MINNODE, snapShot, depth - 1, alpha, beta, pvMove);
+						}
+					}
+
+					moveCounter--;
+					snapShot.Rollback(1);
+
+					if (moveScore > bestSoFar)
+					{
+						bestSoFar = moveScore;
+						bestMove = move.Clone();
+						bestMove.Evaluation = moveScore;
+						alpha = Math.Max(alpha, bestSoFar);
+
+						if (bestSoFar >= beta)
+						{
+							tTable.StoreSnapShot(snapShot, bestSoFar, EvaluationType.Lowerbound, depth, NextTimeStamp(), bestMove);
+							hTable.AddMove(snapShot.whoToMove, move);
+							StoreKiller(depth, move);
+							numRegularCutoffs++;
+							return bestMove;
+						}
+					}
+				}
+
+				if (bestMove == null)
+				{
+					bestMove = new Move(snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField, snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField);
+					bestMove.PieceType = PieceType.King;
+					bestMove.MoveCode = MoveCode.Resign;
+					bestMove.Evaluation = bestSoFar;
+				}
+
+				tTable.StoreSnapShot(snapShot, bestSoFar, EvaluationType.Accurate, depth, NextTimeStamp(), bestMove);
+				bestMove.Evaluation = bestSoFar;
+				return bestMove;
+			}
+
+			/// <summary>
+			/// Recursive alpha-beta minimax search with transposition table integration.
+			/// 
+			/// Core minimax algorithm with alpha-beta pruning to evaluate positions and determine
+			/// the best move for either side. Alternates between MAXNODE (computer to move, maximizing)
+			/// and MINNODE (opponent to move, minimizing).
+			/// 
+			/// Search Process:
+			/// 1. Increments regular node counter
+			/// 2. Checks for drawn positions (insufficient material, repetition, fifty-move rule)
+			/// 3. Validates transposition table cutoff opportunities
+			/// 4. At depth=0, delegates to quiescence search for tactical continuation
+			/// 5. Evaluates all legal moves, pruning branches with beta cutoffs
+			/// 6. Stores results in transposition table with bounds (exact, lower, or upper)
+			/// 
+			/// Alpha-Beta Pruning:
+			/// - Alpha: best value found so far for maximizing player (lower bound)
+			/// - Beta: upper bound on position value (if exceeded, this branch is refuted)
+			/// - Cutoff occurs when alpha >= beta (pruning effective)
+			/// 
+			/// Terminal nodes (checkmate/stalemate) are evaluated by EvaluateNoLegalMoves,
+			/// which handles the distinction between mate and stalemate.
+			/// </summary>
+			/// <param name="nodeType">MAXNODE (computer to move) or MINNODE (opponent to move).</param>
+			/// <param name="snapShot">Current board position.</param>
+			/// <param name="depth">Remaining search depth. Depth=0 triggers quiescence search.</param>
+			/// <param name="alpha">Lower bound: best value found for maximizing player so far.</param>
+			/// <param name="beta">Upper bound: refutation value for this node.</param>
+			/// <param name="pvMove">Principal variation move for move ordering.</param>
+			/// <returns>Evaluated score of the position (from maximizing player's perspective).</returns>
+			private int AlphaBeta(bool nodeType, SnapShot snapShot, int depth, int alpha, int beta, Move pvMove)
+			{
+				numRegularNodes++;
+				if (IsDrawnPosition(snapShot))
+					return 0;
+				if ((numRegularNodes + numQuiescenceNodes) > maxSearchSize)
+					return (snapShot.EvaluateComplete(fromWhosePerspective) >> 3) << 3;
+
+				Move cachedMove = new Move();
+				if (tTable.LookupBoard(snapShot,cachedMove) && cachedMove.SearchDepth >= depth)
+				{
+					if (nodeType == MAXNODE)
+					{
+						if ((cachedMove.EvaluationType == EvaluationType.Accurate || cachedMove.EvaluationType == EvaluationType.Lowerbound) && cachedMove.Evaluation >= beta)
+						{
+							numRegularTTHits++;
+							return cachedMove.Evaluation;
+						}
+					}
+					else
+					{
+						if ((cachedMove.EvaluationType == EvaluationType.Accurate || cachedMove.EvaluationType == EvaluationType.Upperbound) && cachedMove.Evaluation <= alpha)
+						{
+							numRegularTTHits++;
+							return cachedMove.Evaluation;
+						}
+					}
+				}
+
+				// Check extension: if the side to move is in check, extend search by 1.
+				// PerformMove records OpponentSituationCode=Check on the side that did NOT just move.
+				bool inCheck = snapShot.history != null
+					&& snapShot.history.Count > 0
+					&& snapShot.history[snapShot.history.Count - 1].OpponentSituationCode == SituationCode.Check;
+				if (inCheck)
+					depth++;
+
+				if (depth == 0)
+					return QuiescenceSearch(nodeType,snapShot,maxQuiescenceDepth,alpha,beta,pvMove);
+
+				// Null move pruning -- skip when in check (illegal to pass in check)
+				if (!inCheck && nodeType == MAXNODE && depth > 2 && beta < 10000) // not mate score
+				{
+					int nullReduction = depth > 6 ? 3 : 2;
+					int nullScore = AlphaBeta(MINNODE, snapShot, depth - nullReduction, beta - 1, beta, null);
+					if (nullScore >= beta)
+						return nullScore;
+				}
+
+				snapShot.CalculateLegalMoves();
+				Move ttMove = new Move();
+				if (!tTable.LookupBoard(snapShot,ttMove) || ttMove.FieldNumberFrom < 0)
+					ttMove = null;
+
+				// Include killer moves in ordering
+				List<Move> orderedMoves = GetOrderedMovesWithKillers(snapShot, false, ttMove, pvMove, depth);
+
+				if (orderedMoves.Count == 0)
+					return EvaluateNoLegalMoves(nodeType,snapShot,depth);
+
+				// Futility pruning -- skip when in check
+				int staticEval = (snapShot.EvaluateComplete(fromWhosePerspective) >> 3) << 3;
+				if (!inCheck && depth == 1 && nodeType == MAXNODE && staticEval + 200 < alpha)
+					return staticEval;
+				if (!inCheck && depth == 1 && nodeType == MINNODE && staticEval - 200 > beta)
+					return staticEval;
+
+				// Razoring -- skip when in check
+				if (!inCheck && depth <= 3 && nodeType == MAXNODE && staticEval + 300 + 100 * depth < alpha)
+					return QuiescenceSearch(nodeType, snapShot, maxQuiescenceDepth, alpha, beta, pvMove);
+
+				int bestSoFar = nodeType == MAXNODE ? ALPHABETA_MINVAL : ALPHABETA_MAXVAL;
+				Move bestMove = null;
+
+				for (int i = 0; i < orderedMoves.Count; i++)
+				{
+					Move move = orderedMoves[i];
+					int reduction = 0;
+					// LMR -- skip when in check (all responses to check matter)
+					if (!inCheck && i >= 4 && depth > 2 && move.PieceHit == PieceType.None)
+					{
+						reduction = depth > 6 ? 2 : 1;
+					}
+					snapShot.PerformMove(move,true);
+					moveCounter++;
+					int searchDepth = Math.Max(1, depth - 1 - reduction);
+					int moveScore = AlphaBeta(nodeType == MAXNODE ? MINNODE : MAXNODE,snapShot,searchDepth,alpha,beta,pvMove);
+					// Re-search with full depth if reduced and score is good
+					if (reduction > 0 && moveScore > alpha && moveScore < beta)
+					{
+						moveScore = AlphaBeta(nodeType == MAXNODE ? MINNODE : MAXNODE,snapShot,depth - 1,alpha,beta,pvMove);
+					}
+					moveCounter--;
+					snapShot.Rollback(1);
+
+					if (nodeType == MAXNODE)
+					{
+						if (moveScore > bestSoFar)
+						{
+							bestSoFar = moveScore;
+							bestMove = move;
+							alpha = Math.Max(alpha,bestSoFar);
+							if (bestSoFar >= beta)
+							{
+								tTable.StoreSnapShot(snapShot,bestSoFar,EvaluationType.Lowerbound,depth,NextTimeStamp(),bestMove);
+								hTable.AddMove(snapShot.whoToMove,move);
+								StoreKiller(depth, move);
+								numRegularCutoffs++;
+								return bestSoFar;
+							}
+						}
+					}
+					else
+					{
+						if (moveScore < bestSoFar)
+						{
+							bestSoFar = moveScore;
+							bestMove = move;
+							beta = Math.Min(beta,bestSoFar);
+							if (bestSoFar <= alpha)
+							{
+								tTable.StoreSnapShot(snapShot,bestSoFar,EvaluationType.Upperbound,depth,NextTimeStamp(),bestMove);
+								hTable.AddMove(snapShot.whoToMove,move);
+								StoreKiller(depth, move);
+								numRegularCutoffs++;
+								return bestSoFar;
+							}
+						}
+					}
+				}
+
+				tTable.StoreSnapShot(snapShot,bestSoFar,EvaluationType.Accurate,depth,NextTimeStamp(),bestMove);
+				return bestSoFar;
+			}
+
+			/// <summary>
+			/// Move ordering that includes killer heuristic bonuses at the given search depth.
+			/// 
+			/// **Killer Heuristic**:
+			/// Quiet moves that caused beta cutoffs at this depth in sibling nodes are recorded as "killers".
+			/// This helper applies killer move score bonuses (+500,000 for primary, +400,000 for secondary)
+			/// to those moves before sorting. Since killer moves succeeded in sibling positions, they are
+			/// likely to cut off quickly in the current node as well, reducing the number of nodes visited.
+			/// This is especially effective in positions where the same defensive move(s) work across
+			/// several variations at the same depth.
+			/// 
+			/// Move ordering priority (highest to lowest):
+			/// 1. Transposition table move (+2,000,000)
+			/// 2. PV move from previous iteration (+1,000,000)
+			/// 3. Captures from MVV/LVA heuristic
+			/// 4. Killer moves (+500,000 or +400,000)
+			/// 5. History heuristic table moves
+			/// </summary>
+			/// <param name="snapShot">Current board position with legal moves calculated.</param>
+			/// <param name="capturesOnly">If true, only captures are included in the returned list.</param>
+			/// <param name="ttMove">Transposition table move (highest priority).</param>
+			/// <param name="pvMove">Principal variation move (second priority).</param>
+			/// <param name="depth">Current search depth; used to look up killer moves.</param>
+			/// <returns>Sorted list of legal (or capture-only) moves.</returns>
+			/// <summary>
+			/// Move ordering that includes killer heuristic bonuses at the given search depth.
+			/// 
+			/// **Killer Heuristic**:
+			/// Quiet moves that caused beta cutoffs at this depth in sibling nodes are recorded as "killers".
+			/// This helper applies killer move score bonuses (+500,000 for primary, +400,000 for secondary)
+			/// to those moves before sorting. Since killer moves succeeded in sibling positions, they are
+			/// likely to cut off quickly in the current node as well, reducing the number of nodes visited.
+			/// This is especially effective in positions where the same defensive move(s) work across
+			/// several variations at the same depth.
+			/// 
+			/// Move ordering priority (highest to lowest):
+			/// 1. Transposition table move (+2,000,000)
+			/// 2. PV move from previous iteration (+1,000,000)
+			/// 3. Captures from MVV/LVA heuristic
+			/// 4. Killer moves (+500,000 or +400,000)
+			/// 5. History heuristic table moves
+			/// </summary>
+			/// <param name="snapShot">Current board position with legal moves calculated.</param>
+			/// <param name="capturesOnly">If true, only captures are included in the returned list.</param>
+			/// <param name="ttMove">Transposition table move (highest priority).</param>
+			/// <param name="pvMove">Principal variation move (second priority).</param>
+			/// <param name="depth">Current search depth; used to look up killer moves.</param>
+			/// <returns>Sorted list of legal (or capture-only) moves with killer bonuses applied.</returns>
+			private List<Move> GetOrderedMovesWithKillers(SnapShot snapShot, bool capturesOnly, Move ttMove, Move pvMove, int depth)
+			{
+				List<Move> ordered = new List<Move>(snapShot.legalMoves.Count);
+				for (int i = 0; i < snapShot.legalMoves.Count; i++)
+				{
+					Move move = snapShot.legalMoves[i];
+					if (!capturesOnly || move.PieceHit != PieceType.None)
+						ordered.Add(move);
+				}
+				ordered.Sort((left, right) =>
+				{
+					int rightScore = GetMoveOrderingScore(snapShot, right, ttMove, pvMove, capturesOnly) + KillerBonus(depth, right);
+					int leftScore  = GetMoveOrderingScore(snapShot, left,  ttMove, pvMove, capturesOnly) + KillerBonus(depth, left);
+					return rightScore.CompareTo(leftScore);
+				});
+				return ordered;
+			}
+			/// <summary>
+			/// Quiescence search for tactical positions - evaluates captures and checks only.
+			/// 
+			/// Purpose: Avoids the "horizon problem" where quiet moves at the search boundary
+			/// can dramatically change evaluation. By continuing to search tactical positions
+			/// (captures, checks) until stable, we get more accurate position assessments.
+			/// 
+			/// Key Features:
+			/// 1. Stand-pat evaluation: position without further moves provides lower bound (for max player)
+			/// 2. Captures only: search continues with captures, ordered by MVV/LVA
+			/// 3. Check extensions: search deeper when in check
+			/// 4. Transposition table integration for efficiency
+			/// 5. Delta pruning: skip captures that can't improve the score enough
+			/// 
+			/// Search terminates when:
+			/// - No captures available and not in check (stand-pat)
+			/// - Depth limit reached
+			/// - Position repeats or insufficient material
+			/// - Beta cutoff achieved
+			/// </summary>
+			/// <param name="nodeType">MAXNODE or MINNODE.</param>
+			/// <param name="snapShot">Current board position.</param>
+			/// <param name="depth">Remaining quiescence depth.</param>
+			/// <param name="alpha">Lower bound.</param>
+			/// <param name="beta">Upper bound.</param>
+			/// <param name="pvMove">Principal variation move.</param>
+			/// <returns>Quiescence evaluation score.</returns>
+			private int QuiescenceSearch(bool nodeType, SnapShot snapShot, int depth, int alpha, int beta, Move pvMove)
+			{
+				numQuiescenceNodes++;
+				if (IsDrawnPosition(snapShot))
+					return 0;
+
+				Move cachedMove = new Move();
+				if (tTable.LookupBoard(snapShot,cachedMove))
+				{
+					if (nodeType == MAXNODE)
+					{
+						if ((cachedMove.EvaluationType == EvaluationType.Accurate || cachedMove.EvaluationType == EvaluationType.Lowerbound) && cachedMove.Evaluation >= beta)
+						{
+							numQuiescenceTTHits++;
+							return cachedMove.Evaluation;
+						}
+					}
+					else
+					{
+						if ((cachedMove.EvaluationType == EvaluationType.Accurate || cachedMove.EvaluationType == EvaluationType.Upperbound) && cachedMove.Evaluation <= alpha)
+						{
+							numQuiescenceTTHits++;
+							return cachedMove.Evaluation;
+						}
+					}
+				}
+
+				int materialOnly = (snapShot.EvaluateMaterial(fromWhosePerspective) >> 3) << 3;
+				if (materialOnly > (beta + EVAL_THRESHOLD) || materialOnly < (alpha - EVAL_THRESHOLD))
+					return materialOnly;
+
+				int standPat = (snapShot.EvaluateComplete(fromWhosePerspective) >> 3) << 3;
+				if (standPat > alpha)
+					alpha = standPat;
+				if (standPat >= beta)
+					return standPat;
+
+				snapShot.CalculateLegalMoves();
+				if (snapShot.legalMoves.Count == 0)
+				{
+					int terminal = EvaluateNoLegalMoves(nodeType,snapShot,depth);
+					tTable.StoreSnapShot(snapShot,terminal,EvaluationType.Accurate,depth,NextTimeStamp());
+					return terminal;
+				}
+
+				if (!snapShot.HitPossible || depth == 0)
+				{
+					tTable.StoreSnapShot(snapShot,standPat,EvaluationType.Accurate,depth,NextTimeStamp());
+					return standPat;
+				}
+
+				Move ttMove = new Move();
+				if (!tTable.LookupBoard(snapShot,ttMove) || ttMove.FieldNumberFrom < 0)
+					ttMove = null;
+
+				List<Move> orderedMoves = GetOrderedMoves(snapShot,true,ttMove,pvMove);
+
+				int bestSoFar = standPat;
+				Move bestMove = null;
+
+				for (int i = 0; i < orderedMoves.Count; i++)
+				{
+					Move move = orderedMoves[i];
+					if (move.PieceHit == PieceType.None)
+						continue;
+
+					int delta = Helper.PieceType2Value(move.PieceHit);
+					if (standPat + delta + EVAL_THRESHOLD < alpha)
+						continue;
+
+					snapShot.PerformMove(move,true);
+					moveCounter++;
+					int moveScore = QuiescenceSearch(nodeType == MAXNODE ? MINNODE : MAXNODE,snapShot,depth - 1,alpha,beta,pvMove);
+					moveCounter--;
+					snapShot.Rollback(1);
+
+					if (nodeType == MAXNODE)
+					{
+						if (moveScore > bestSoFar)
+						{
+							bestSoFar = moveScore;
+							bestMove = move;
+							alpha = Math.Max(alpha,bestSoFar);
+							if (bestSoFar >= beta)
+							{
+								tTable.StoreSnapShot(snapShot,bestSoFar,EvaluationType.Lowerbound,depth,NextTimeStamp(),bestMove);
+								numQuiescenceCutoffs++;
+								return bestSoFar;
+							}
+						}
+					}
+					else
+					{
+						if (moveScore < bestSoFar)
+						{
+							bestSoFar = moveScore;
+							bestMove = move;
+							beta = Math.Min(beta,bestSoFar);
+							if (bestSoFar <= alpha)
+							{
+								tTable.StoreSnapShot(snapShot,bestSoFar,EvaluationType.Upperbound,depth,NextTimeStamp(),bestMove);
+								numQuiescenceCutoffs++;
+								return bestSoFar;
+							}
+						}
+					}
+				}
+
+				tTable.StoreSnapShot(snapShot,bestSoFar,EvaluationType.Accurate,depth,NextTimeStamp(),bestMove);
+				return bestSoFar;
+			}
+		} // end PVS class
 
 
 		// Data counters to evaluate pawn structure
@@ -3348,7 +3694,7 @@ moveCounter--;
 
 								index = i >> 3;
 								// on the seventh rank?
-								if ((i % 8) == 7)
+								if ((i % 8) == 6)
 									score += 22;
 								// on a semi- or completely open file?
 								if (columnOwnPawnCount[index] == 0)
@@ -3545,9 +3891,8 @@ moveCounter--;
 
 								index = i >> 3;
 								// on the seventh rank?
-								if ((i % 8) == 0)
-									score += 22;
-								// on a semi- or completely open file?
+								if ((i % 8) == 1)
+									score += 22; 								// on a semi- or completely open file?
 								if (columnOwnPawnCount[index] == 0)
 								{
 									if (columnOpponentPawnCount[index] == 0)
@@ -3648,9 +3993,9 @@ moveCounter--;
 			if (IsSquareAttackedByPawn(field,opponent))
 				return 0;
 
-			int bonus = pieceType == PieceType.Knight ? 8 : 6;
+			int bonus = pieceType == PieceType.Knight ? 4 : 3;
 			if (file >= 2 && file <= 5 && rank >= 2 && rank <= 5)
-				bonus += 4;
+				bonus += 2;
 
 			int middlegameWeight = 256 - endgamePhase;
 			return (bonus * middlegameWeight) >> 8;
@@ -3661,7 +4006,7 @@ moveCounter--;
 			int whiteSpace = EvaluatePawnSpaceForColor(Color.White);
 			int blackSpace = EvaluatePawnSpaceForColor(Color.Black);
 			int relativeSpace = color == Color.White ? whiteSpace - blackSpace : blackSpace - whiteSpace;
-			relativeSpace = ClampScore(relativeSpace,-48,48);
+			relativeSpace = ClampScore(relativeSpace,-24,24);
 			int middlegameWeight = 256 - endgamePhase;
 			return (relativeSpace * middlegameWeight) >> 8;
 		}
@@ -3747,7 +4092,7 @@ moveCounter--;
 				score += (bonus * endgameWeight) >> 8;
 			}
 
-			score = ClampScore(score,0,32);
+			score = ClampScore(score,0,16);
 			return score;
 		}
 
@@ -3789,7 +4134,7 @@ moveCounter--;
 					score += 2;
 			}
 
-			score = ClampScore(score,0,40);
+			score = ClampScore(score,0,20);
 
 			int middlegameWeight = 256 - endgamePhase;
 			return (score * middlegameWeight) >> 7;
@@ -3810,7 +4155,7 @@ moveCounter--;
 			int bishopPairBase = 10;
 			int colorComplexPressure = imbalance << 1;
 			int score = bishopPairBase + colorComplexPressure;
-			score = ClampScore(score,0,24);
+			score = ClampScore(score,0,12);
 
 			int middlegameWeight = 256 - (endgamePhase >> 1);
 			return (score * middlegameWeight) >> 8;
@@ -3870,7 +4215,7 @@ moveCounter--;
 				score += pieceScore;
 			}
 
-			score = ClampScore(score,0,48);
+			score = ClampScore(score,0,24);
 
 			int middlegameWeight = 192 + ((256 - endgamePhase) >> 2);
 			return (score * middlegameWeight) >> 8;
@@ -4271,6 +4616,23 @@ moveCounter--;
 							columnLeastAdvancedOpponentPawnFieldNum[index] = i;
 					}
 				}
+				// Populate passed-pawn field numbers for rook-behind-passed-pawn evaluation
+				for (int i = 0; i < 8; i++)
+				{
+					if (columnOwnPawnCount[i] == 0)
+						continue;
+					bool isPassed;
+					if (i == 0)
+						isPassed = columnMostAdvancedOwnPawnFieldNum[i] > Math.Max(columnLeastAdvancedOpponentPawnFieldNum[i], columnLeastAdvancedOpponentPawnFieldNum[i + 1]);
+					else if (i == 7)
+						isPassed = columnMostAdvancedOwnPawnFieldNum[i] > Math.Max(columnLeastAdvancedOpponentPawnFieldNum[i], columnLeastAdvancedOpponentPawnFieldNum[i - 1]);
+					else
+						isPassed = columnMostAdvancedOwnPawnFieldNum[i] > columnLeastAdvancedOpponentPawnFieldNum[i] &&
+						           columnMostAdvancedOwnPawnFieldNum[i] > columnLeastAdvancedOpponentPawnFieldNum[i - 1] &&
+						           columnMostAdvancedOwnPawnFieldNum[i] > columnLeastAdvancedOpponentPawnFieldNum[i + 1];
+					if (isPassed)
+						columnOwnPassedPawnCount[i] = columnMostAdvancedOwnPawnFieldNum[i];
+				}
 			}
 			else // Analyze from Black's perspective
 			{
@@ -4300,7 +4662,7 @@ moveCounter--;
 
 						// Look for a "pawn ram", i.e., a situation where a white pawn
 						// is located in the square immediately ahead of this one.
-						x = situation[i];
+						x = situation[i - 1];
 						if (x == 32 || x == 48)
 							pawnRamCount++;
 					}
@@ -4313,6 +4675,23 @@ moveCounter--;
 						if (i < columnLeastAdvancedOpponentPawnFieldNum[index])
 							columnLeastAdvancedOpponentPawnFieldNum[index] = i;
 					}
+				}
+				// Populate passed-pawn field numbers for rook-behind-passed-pawn evaluation
+				for (int i = 0; i < 8; i++)
+				{
+					if (columnOwnPawnCount[i] == 0)
+						continue;
+					bool isPassed;
+					if (i == 0)
+						isPassed = columnMostAdvancedOwnPawnFieldNum[i] < Math.Min(columnLeastAdvancedOpponentPawnFieldNum[i], columnLeastAdvancedOpponentPawnFieldNum[i + 1]);
+					else if (i == 7)
+						isPassed = columnMostAdvancedOwnPawnFieldNum[i] < Math.Min(columnLeastAdvancedOpponentPawnFieldNum[i], columnLeastAdvancedOpponentPawnFieldNum[i - 1]);
+					else
+						isPassed = columnMostAdvancedOwnPawnFieldNum[i] < columnLeastAdvancedOpponentPawnFieldNum[i] &&
+						           columnMostAdvancedOwnPawnFieldNum[i] < columnLeastAdvancedOpponentPawnFieldNum[i - 1] &&
+						           columnMostAdvancedOwnPawnFieldNum[i] < columnLeastAdvancedOpponentPawnFieldNum[i + 1];
+					if (isPassed)
+						columnOwnPassedPawnCount[i] = columnMostAdvancedOwnPawnFieldNum[i];
 				}
 			}
 		}
@@ -7728,7 +8107,7 @@ moveCounter--;
 */
 
 		/// <summary>
-		/// Computes best move using the legacy MTD engine, optionally backed by an opening book.
+		/// Computes best move using the MTD engine, optionally backed by an opening book.
 		/// </summary>
 		/// <param name="openingBookFileName">Opening book file path/key.</param>
 		/// <param name="format">Opening book notation format.</param>
@@ -7751,12 +8130,12 @@ moveCounter--;
 		}
 
 		/// <summary>
-		/// Computes best move using the MTDv2 engine, optionally backed by an opening book.
+		/// Finds the best move using the PVS algorithm.
 		/// </summary>
-		/// <param name="openingBookFileName">Opening book file path/key.</param>
-		/// <param name="format">Opening book notation format.</param>
-		/// <returns>Best move returned by the MTDv2 search engine.</returns>
-		public Move GetBestMoveMTDv2(string openingBookFileName, OpeningBookFormat format)
+		/// <param name="openingBookFileName">Opening book file name.</param>
+		/// <param name="format">Opening book format.</param>
+		/// <returns>The best move found.</returns>
+		public Move GetBestMovePVS(string openingBookFileName, OpeningBookFormat format)
 		{
 			OpeningBook openings = null;
 			openings = (OpeningBook)openingBooks[openingBookFileName];
@@ -7770,10 +8149,8 @@ moveCounter--;
 				else
 					openings = null;
 			}
-			return MTDPickerV2.GetBestMove(this.Clone(),openings);
+			return PVSPicker.GetBestMove(this.Clone(),openings);
 		}
-
-		//	}
 
 	}
 
