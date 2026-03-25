@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.IO;
+using System.Diagnostics;
 using System.Windows.Forms;
 using tSHess.Engine;
 using tSHess.UI;
@@ -49,6 +50,370 @@ namespace tSHess
             Quit,
             EnableFast,
             DisableFast
+        }
+
+        internal sealed class BenchmarkOptions
+        {
+            public EngineKind Engine = EngineKind.PVS;
+            public int RunsPerPosition = 3;
+            public bool UseOpeningBook = false;
+            public int MaxIterationDepth = 8;
+            public int MaxSearchSize = 20000;
+            public bool Compare = false;
+        }
+
+        internal sealed class BenchmarkCase
+        {
+            public string Name;
+            public string Fen;
+
+            public BenchmarkCase(string name, string fen)
+            {
+                Name = name;
+                Fen = fen;
+            }
+        }
+
+        internal static bool TryParseEngineKind(string input, out EngineKind engine)
+        {
+            string normalized = input == null ? "" : input.Trim().ToLowerInvariant();
+            switch (normalized)
+            {
+                case "1":
+                case "mtd":
+                    engine = EngineKind.MTD;
+                    return true;
+                case "2":
+                case "pvs":
+                    engine = EngineKind.PVS;
+                    return true;
+                default:
+                    engine = EngineKind.PVS;
+                    return false;
+            }
+        }
+
+        internal static bool TryParseBenchmarkOptions(string[] args, out BenchmarkOptions options, out string error)
+        {
+            options = new BenchmarkOptions();
+            error = "";
+
+            if (args == null || args.Length == 0)
+                return true;
+
+            for (int i = 1; i < args.Length; i++)
+            {
+                string token = args[i] == null ? "" : args[i].Trim().ToLowerInvariant();
+                if (token.Length == 0)
+                    continue;
+
+                if (token == "--engine")
+                {
+                    if (i + 1 >= args.Length)
+                    {
+                        error = "Missing value for --engine (expected: mtd or pvs).";
+                        return false;
+                    }
+
+                    if (!TryParseEngineKind(args[i + 1], out EngineKind parsedEngine))
+                    {
+                        error = "Invalid engine '" + args[i + 1] + "' (expected: mtd or pvs).";
+                        return false;
+                    }
+
+                    options.Engine = parsedEngine;
+                    i++;
+                    continue;
+                }
+
+                if (token == "--runs")
+                {
+                    if (i + 1 >= args.Length)
+                    {
+                        error = "Missing value for --runs (expected positive integer).";
+                        return false;
+                    }
+
+                    if (!int.TryParse(args[i + 1], out int runs) || runs <= 0)
+                    {
+                        error = "Invalid --runs value '" + args[i + 1] + "' (expected positive integer).";
+                        return false;
+                    }
+
+                    options.RunsPerPosition = runs;
+                    i++;
+                    continue;
+                }
+
+                if (token == "--depth")
+                {
+                    if (i + 1 >= args.Length)
+                    {
+                        error = "Missing value for --depth (expected positive integer).";
+                        return false;
+                    }
+
+                    if (!int.TryParse(args[i + 1], out int depth) || depth <= 0)
+                    {
+                        error = "Invalid --depth value '" + args[i + 1] + "' (expected positive integer).";
+                        return false;
+                    }
+
+                    options.MaxIterationDepth = depth;
+                    i++;
+                    continue;
+                }
+
+                if (token == "--nodes")
+                {
+                    if (i + 1 >= args.Length)
+                    {
+                        error = "Missing value for --nodes (expected positive integer).";
+                        return false;
+                    }
+
+                    if (!int.TryParse(args[i + 1], out int nodes) || nodes <= 0)
+                    {
+                        error = "Invalid --nodes value '" + args[i + 1] + "' (expected positive integer).";
+                        return false;
+                    }
+
+                    options.MaxSearchSize = nodes;
+                    i++;
+                    continue;
+                }
+
+                if (token == "--book" || token == "--use-book")
+                {
+                    options.UseOpeningBook = true;
+                    continue;
+                }
+
+                if (token == "--no-book")
+                {
+                    options.UseOpeningBook = false;
+                    continue;
+                }
+
+                if (token == "--compare")
+                {
+                    options.Compare = true;
+                    continue;
+                }
+
+                error = "Unknown benchmark option '" + args[i] + "'.";
+                return false;
+            }
+
+            return true;
+        }
+
+        static void ShowBenchmarkUsage()
+        {
+            Console.WriteLine("Benchmark mode usage:");
+            Console.WriteLine("  tSHess benchmark [--engine mtd|pvs] [--runs N] [--depth N] [--nodes N] [--book|--no-book] [--compare]");
+            Console.WriteLine("Defaults: --engine pvs --runs 3 --depth 8 --nodes 20000 --no-book --compare=false");
+            Console.WriteLine("Examples:");
+            Console.WriteLine("  tSHess benchmark");
+            Console.WriteLine("  tSHess benchmark --engine pvs --runs 5 --depth 10 --nodes 40000");
+            Console.WriteLine("  tSHess benchmark --compare                (compare MTD vs PVS on same suite)");
+            Console.WriteLine("  tSHess benchmark --engine mtd --runs 3 --book");
+        }
+
+        static void RunBenchmarkSuite(BenchmarkOptions options, string openingBookSan)
+        {
+            if (options.Compare)
+            {
+                RunBenchmarkComparison(options, openingBookSan);
+                return;
+            }
+
+            StringBuilder report = new StringBuilder();
+            Action<string> writeLine = line =>
+            {
+                Console.WriteLine(line);
+                report.AppendLine(line);
+            };
+
+            BenchmarkCase[] suite = new BenchmarkCase[]
+            {
+                new BenchmarkCase("Start Position", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"),
+                new BenchmarkCase("Open Sicilian", "r1bqk2r/pp2bppp/2n2n2/2pp4/3P4/2PBPN2/PP3PPP/RNBQ1RK1 w kq - 0 8"),
+                new BenchmarkCase("King Attack", "r2q1rk1/ppp2ppp/2n2n2/3bp3/3P4/2N1PN2/PPQ2PPP/R1B1KB1R w KQ - 2 9"),
+                new BenchmarkCase("Closed Center", "r1bq1rk1/pp1n1pbp/2pp1np1/4p3/2PPP3/2N1BN2/PP3PPP/R2QKB1R w KQ - 0 9"),
+                new BenchmarkCase("Endgame Rook", "8/5pk1/3p2p1/2pPp3/2P1P3/5KP1/8/3R4 w - - 0 1"),
+                new BenchmarkCase("Minor Piece Endgame", "8/2k5/2p2p2/3p4/3P4/2P2P2/2K5/3B4 w - - 0 1"),
+                new BenchmarkCase("Tactical Middlegame", "r2q1rk1/pp1bbppp/2n1pn2/2pp4/3P4/2N1PN2/PPQ1BPPP/R1B2RK1 w - - 0 10"),
+                new BenchmarkCase("Queenside Pressure", "2rq1rk1/pp1n1ppp/2pbpn2/3p4/3P4/2N1PN2/PPQ1BPPP/2RR2K1 w - - 3 13")
+            };
+
+            SnapShot.ConfigureSearchLimits(options.MaxIterationDepth, options.MaxSearchSize);
+
+            writeLine("Running benchmark suite...");
+            writeLine("Engine: " + (options.Engine == EngineKind.PVS ? "PVS" : "MTD"));
+            writeLine("Runs per position: " + options.RunsPerPosition);
+            writeLine("Search depth cap: " + options.MaxIterationDepth);
+            writeLine("Search node cap: " + options.MaxSearchSize);
+            writeLine("Opening book: " + (options.UseOpeningBook ? "enabled" : "disabled"));
+            writeLine("");
+
+            long suiteMillis = 0;
+            int completedSearches = 0;
+
+            foreach (BenchmarkCase testCase in suite)
+            {
+                long sumMillis = 0;
+                int sumEval = 0;
+                string sampleMove = "-";
+
+                for (int run = 0; run < options.RunsPerPosition; run++)
+                {
+                    SnapShot s = SnapShot.FromFen(testCase.Fen);
+                    Stopwatch sw = Stopwatch.StartNew();
+                    Move bestMove = GetEngineMove(s, openingBookSan, options.Engine, options.UseOpeningBook, announceThinking: false);
+                    sw.Stop();
+
+                    long elapsed = Math.Max(1, sw.ElapsedMilliseconds);
+                    sumMillis += elapsed;
+                    completedSearches++;
+
+                    if (bestMove != null)
+                    {
+                        sumEval += bestMove.Evaluation;
+                        sampleMove = DescribeMove(s, bestMove);
+                    }
+                }
+
+                suiteMillis += sumMillis;
+                long avgMillis = Math.Max(1, sumMillis / options.RunsPerPosition);
+                int avgEval = options.RunsPerPosition > 0 ? sumEval / options.RunsPerPosition : 0;
+
+                writeLine(testCase.Name + " | avg=" + avgMillis + " ms | eval=" + avgEval + " | move=" + sampleMove);
+            }
+
+            writeLine("");
+            writeLine("Summary:");
+            writeLine("  Positions: " + suite.Length);
+            writeLine("  Total searches: " + completedSearches);
+            writeLine("  Total time: " + suiteMillis + " ms");
+            if (suiteMillis > 0)
+            {
+                double searchesPerSecond = (completedSearches * 1000.0) / suiteMillis;
+                writeLine("  Throughput: " + searchesPerSecond.ToString("F2") + " searches/s");
+            }
+
+            string reportFile = "benchmark-report.txt";
+            File.WriteAllText(reportFile, report.ToString());
+            writeLine("");
+            writeLine("Report saved to " + Path.GetFullPath(reportFile));
+        }
+
+        static void RunBenchmarkComparison(BenchmarkOptions options, string openingBookSan)
+        {
+            StringBuilder report = new StringBuilder();
+            Action<string> writeLine = line =>
+            {
+                Console.WriteLine(line);
+                report.AppendLine(line);
+            };
+
+            BenchmarkCase[] suite = new BenchmarkCase[]
+            {
+                new BenchmarkCase("Start Position", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"),
+                new BenchmarkCase("Open Sicilian", "r1bqk2r/pp2bppp/2n2n2/2pp4/3P4/2PBPN2/PP3PPP/RNBQ1RK1 w kq - 0 8"),
+                new BenchmarkCase("King Attack", "r2q1rk1/ppp2ppp/2n2n2/3bp3/3P4/2N1PN2/PPQ2PPP/R1B1KB1R w KQ - 2 9"),
+                new BenchmarkCase("Closed Center", "r1bq1rk1/pp1n1pbp/2pp1np1/4p3/2PPP3/2N1BN2/PP3PPP/R2QKB1R w KQ - 0 9"),
+                new BenchmarkCase("Endgame Rook", "8/5pk1/3p2p1/2pPp3/2P1P3/5KP1/8/3R4 w - - 0 1"),
+                new BenchmarkCase("Minor Piece Endgame", "8/2k5/2p2p2/3p4/3P4/2P2P2/2K5/3B4 w - - 0 1"),
+                new BenchmarkCase("Tactical Middlegame", "r2q1rk1/pp1bbppp/2n1pn2/2pp4/3P4/2N1PN2/PPQ1BPPP/R1B2RK1 w - - 0 10"),
+                new BenchmarkCase("Queenside Pressure", "2rq1rk1/pp1n1ppp/2pbpn2/3p4/3P4/2N1PN2/PPQ1BPPP/2RR2K1 w - - 3 13")
+            };
+
+            SnapShot.ConfigureSearchLimits(options.MaxIterationDepth, options.MaxSearchSize);
+
+            writeLine("Comparing MTD vs PVS on benchmark suite...");
+            writeLine("Runs per position: " + options.RunsPerPosition);
+            writeLine("Search depth cap: " + options.MaxIterationDepth);
+            writeLine("Search node cap: " + options.MaxSearchSize);
+            writeLine("Opening book: " + (options.UseOpeningBook ? "enabled" : "disabled"));
+            writeLine("");
+
+            long mtdSuiteMillis = 0;
+            long pvsSuiteMillis = 0;
+            int mtdCompletedSearches = 0;
+            int pvsCompletedSearches = 0;
+
+            writeLine(string.Format("{0,-30} | {1,-15} | {2,-15}", "Position", "MTD (ms)", "PVS (ms)"));
+            writeLine(new string('-', 64));
+
+            foreach (BenchmarkCase testCase in suite)
+            {
+                long mtdMillis = 0;
+                long pvsMillis = 0;
+
+                for (int run = 0; run < options.RunsPerPosition; run++)
+                {
+                    SnapShot s1 = SnapShot.FromFen(testCase.Fen);
+                    Stopwatch sw1 = Stopwatch.StartNew();
+                    Move mtdMove = GetEngineMove(s1, openingBookSan, EngineKind.MTD, options.UseOpeningBook, announceThinking: false);
+                    sw1.Stop();
+                    mtdMillis += Math.Max(1, sw1.ElapsedMilliseconds);
+                    mtdCompletedSearches++;
+
+                    SnapShot s2 = SnapShot.FromFen(testCase.Fen);
+                    Stopwatch sw2 = Stopwatch.StartNew();
+                    Move pvsMove = GetEngineMove(s2, openingBookSan, EngineKind.PVS, options.UseOpeningBook, announceThinking: false);
+                    sw2.Stop();
+                    pvsMillis += Math.Max(1, sw2.ElapsedMilliseconds);
+                    pvsCompletedSearches++;
+                }
+
+                mtdSuiteMillis += mtdMillis;
+                pvsSuiteMillis += pvsMillis;
+
+                long mtdAvg = mtdMillis / options.RunsPerPosition;
+                long pvsAvg = pvsMillis / options.RunsPerPosition;
+
+                writeLine(string.Format("{0,-30} | {1,-15} | {2,-15}", testCase.Name, mtdAvg, pvsAvg));
+            }
+
+            writeLine("");
+            writeLine("Summary:");
+            writeLine("  Positions: " + suite.Length);
+            writeLine("");
+            writeLine("  MTD:");
+            writeLine("    Total searches: " + mtdCompletedSearches);
+            writeLine("    Total time: " + mtdSuiteMillis + " ms");
+            if (mtdSuiteMillis > 0)
+            {
+                double mtdSearchesPerSecond = (mtdCompletedSearches * 1000.0) / mtdSuiteMillis;
+                writeLine("    Throughput: " + mtdSearchesPerSecond.ToString("F2") + " searches/s");
+            }
+
+            writeLine("");
+            writeLine("  PVS:");
+            writeLine("    Total searches: " + pvsCompletedSearches);
+            writeLine("    Total time: " + pvsSuiteMillis + " ms");
+            if (pvsSuiteMillis > 0)
+            {
+                double pvsSearchesPerSecond = (pvsCompletedSearches * 1000.0) / pvsSuiteMillis;
+                writeLine("    Throughput: " + pvsSearchesPerSecond.ToString("F2") + " searches/s");
+            }
+
+            writeLine("");
+            if (mtdSuiteMillis > 0 && pvsSuiteMillis > 0)
+            {
+                double advantage = ((mtdSuiteMillis - pvsSuiteMillis) * 100.0) / mtdSuiteMillis;
+                if (advantage > 0)
+                    writeLine("  PVS is " + advantage.ToString("F1") + "% faster than MTD");
+                else
+                    writeLine("  MTD is " + Math.Abs(advantage).ToString("F1") + "% faster than PVS");
+            }
+
+            string reportFile = "benchmark-report.txt";
+            File.WriteAllText(reportFile, report.ToString());
+            writeLine("");
+            writeLine("Report saved to " + Path.GetFullPath(reportFile));
         }
 
         internal static bool IsEvaluationCommand(string input)
@@ -452,15 +817,25 @@ namespace tSHess
             return "Game result: Ongoing.";
         }
 
-        static Move GetEngineMove(SnapShot s, string openingBookSan, EngineKind engine)
+        static Move GetEngineMove(SnapShot s, string openingBookSan, EngineKind engine, bool useOpeningBook = true, bool announceThinking = true)
         {
-            Console.WriteLine();
-            Console.WriteLine("Thinking...");
-            Console.WriteLine();
-            if (engine == EngineKind.PVS)
-                return s.GetBestMovePVS(openingBookSan, OpeningBookFormat.SanNotation);
+            if (announceThinking)
+            {
+                Console.WriteLine();
+                Console.WriteLine("Thinking...");
+                Console.WriteLine();
+            }
 
-            return s.GetBestMoveMTD(openingBookSan, OpeningBookFormat.SanNotation);
+            if (engine == EngineKind.PVS)
+            {
+                if (useOpeningBook)
+                    return s.GetBestMovePVS(openingBookSan, OpeningBookFormat.SanNotation);
+                return s.GetBestMovePVS();
+            }
+
+            if (useOpeningBook)
+                return s.GetBestMoveMTD(openingBookSan, OpeningBookFormat.SanNotation);
+            return s.GetBestMoveMTD();
         }
 
         static TurnAction PromptHumanTurn(SnapShot s, string openingBookSan, EngineKind engine, out Move move)
@@ -642,6 +1017,27 @@ namespace tSHess
             if (args != null && args.Length > 0 && args[0].ToLower() == "validate-openings")
             {
                 ValidateOpeningsFile(openingBook, $"validation-report-{openingBook}", OpeningBookFormat.CoordinateNotation);
+                return;
+            }
+
+            // CLI helper: benchmark suite and exit
+            if (args != null && args.Length > 0 && args[0].ToLower() == "benchmark")
+            {
+                if (args.Any(a => (a ?? "").Trim().ToLowerInvariant() == "--help" || (a ?? "").Trim().ToLowerInvariant() == "-h"))
+                {
+                    ShowBenchmarkUsage();
+                    return;
+                }
+
+                if (!TryParseBenchmarkOptions(args, out BenchmarkOptions options, out string parseError))
+                {
+                    Console.WriteLine("Benchmark option error: " + parseError);
+                    Console.WriteLine();
+                    ShowBenchmarkUsage();
+                    return;
+                }
+
+                RunBenchmarkSuite(options, openingBookSan);
                 return;
             }
 

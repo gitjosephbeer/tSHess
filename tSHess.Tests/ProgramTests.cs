@@ -176,6 +176,77 @@ namespace tSHess.Tests
         }
 
         [Fact]
+        public void TryParseBenchmarkOptions_Defaults_AreApplied()
+        {
+            bool parsed = Program.TryParseBenchmarkOptions(new[] { "benchmark" }, out Program.BenchmarkOptions options, out string error);
+
+            Assert.True(parsed);
+            Assert.Equal(string.Empty, error);
+            Assert.Equal(Program.EngineKind.PVS, options.Engine);
+            Assert.Equal(3, options.RunsPerPosition);
+            Assert.False(options.UseOpeningBook);
+            Assert.Equal(8, options.MaxIterationDepth);
+            Assert.Equal(20000, options.MaxSearchSize);
+            Assert.False(options.Compare);
+        }
+
+        [Fact]
+        public void TryParseBenchmarkOptions_ParsesEngineRunsAndBook()
+        {
+            bool parsed = Program.TryParseBenchmarkOptions(new[] { "benchmark", "--engine", "mtd", "--runs", "5", "--depth", "10", "--nodes", "40000", "--book" }, out Program.BenchmarkOptions options, out string error);
+
+            Assert.True(parsed);
+            Assert.Equal(string.Empty, error);
+            Assert.Equal(Program.EngineKind.MTD, options.Engine);
+            Assert.Equal(5, options.RunsPerPosition);
+            Assert.Equal(10, options.MaxIterationDepth);
+            Assert.Equal(40000, options.MaxSearchSize);
+            Assert.True(options.UseOpeningBook);
+        }
+
+        [Fact]
+        public void TryParseBenchmarkOptions_InvalidRuns_ReturnsFalse()
+        {
+            bool parsed = Program.TryParseBenchmarkOptions(new[] { "benchmark", "--runs", "0" }, out Program.BenchmarkOptions options, out string error);
+
+            Assert.False(parsed);
+            Assert.Contains("--runs", error, StringComparison.OrdinalIgnoreCase);
+            Assert.NotNull(options);
+        }
+
+        [Fact]
+        public void TryParseBenchmarkOptions_UnknownOption_ReturnsFalse()
+        {
+            bool parsed = Program.TryParseBenchmarkOptions(new[] { "benchmark", "--speed", "fast" }, out Program.BenchmarkOptions options, out string error);
+
+            Assert.False(parsed);
+            Assert.Contains("Unknown", error, StringComparison.OrdinalIgnoreCase);
+            Assert.NotNull(options);
+        }
+
+        [Fact]
+        public void TryParseBenchmarkOptions_CompareFlag_SetsCompareTrue()
+        {
+            bool parsed = Program.TryParseBenchmarkOptions(new[] { "benchmark", "--compare" }, out Program.BenchmarkOptions options, out string error);
+
+            Assert.True(parsed);
+            Assert.Equal(string.Empty, error);
+            Assert.True(options.Compare);
+        }
+
+        [Fact]
+        public void TryParseBenchmarkOptions_CompareWithEngineOptions_ParsesCorrectly()
+        {
+            bool parsed = Program.TryParseBenchmarkOptions(new[] { "benchmark", "--compare", "--runs", "2", "--depth", "6" }, out Program.BenchmarkOptions options, out string error);
+
+            Assert.True(parsed);
+            Assert.Equal(string.Empty, error);
+            Assert.True(options.Compare);
+            Assert.Equal(2, options.RunsPerPosition);
+            Assert.Equal(6, options.MaxIterationDepth);
+        }
+
+        [Fact]
         public void FormatGameResult_Stalemate_IsDrawMessage()
         {
             string result = Program.FormatGameResult(SituationCode.Stalemate, Color.White, 0);

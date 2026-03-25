@@ -455,7 +455,7 @@ namespace tSHess.Engine
 	public class OpeningBook
 	{
 		// The hash table itself
-		private const int TABLE_SIZE = 1024;
+		private const int TABLE_SIZE = 32768;
 		private OpeningBookEntry[] openingBookEntryTable = null;
 
 		/// <summary>
@@ -1694,10 +1694,15 @@ namespace tSHess.Engine
 			// terms in the evaluation function
 			protected const int EVAL_THRESHOLD = 200;
 
-			// A score below which we give up: if Alphabeta ever returns a value lower
-			// than this threshold, then all is lost and we might as well resign.  Here,
-			// the value is equivalent to "mated by the opponent in 3 moves or less".
-			protected const int ALPHABETA_GIVEUP = -29995;
+		// Late Move Reductions (LMR) parameters
+		protected const int LMR_MIN_MOVES = 3;  // First N moves searched at full depth
+		protected const int LMR_DEPTH_REDUCTION = 1;  // Reduce depth by this amount for quiet moves
+		protected const int LMR_MIN_DEPTH = 50;  // Minimum depth (disabled for now - not showing improvement)
+
+		// Null Move Pruning parameters
+		protected const int NMO_MIN_DEPTH = 3;  // Minimum depth for null move pruning
+		protected const int NMO_DEPTH_REDUCTION = 2;  // Reduce depth for null move search
+
 
 			// Statistics
 			protected int numRegularNodes = 0;
@@ -1797,7 +1802,7 @@ namespace tSHess.Engine
 
 			/// <summary>
 			/// Calculates move ordering score. Higher scores are searched first to maximise pruning.
-			/// Prioritises: TT move, PV move, MVV/LVA captures, history heuristic.
+			/// Prioritises: TT move, PV move, SEE swap-sequence captures, history heuristic.
 			/// </summary>
 			protected int GetMoveOrderingScore(SnapShot snapShot, Move move, Move ttMove, Move pvMove, bool capturesOnly)
 			{
@@ -1808,9 +1813,7 @@ namespace tSHess.Engine
 					score += 1_000_000;
 				if (capturesOnly || move.PieceHit != PieceType.None)
 				{
-					int capturedValue = move.PieceHit == PieceType.None ? 0 : Helper.PieceType2Value(move.PieceHit);
-					int movingValue = Helper.PieceType2Value((PieceType)(snapShot.situation[move.FieldNumberFrom] & 0x07));
-					score += capturedValue * 10 - movingValue;
+					score += snapShot.EvaluateCaptureSee(move);
 				}
 				return score;
 			}
@@ -1890,27 +1893,65 @@ namespace tSHess.Engine
 
 				snapShot.CalculateLegalMoves();
 
-				// Sort the moves according to History heuristic values
-				snapShot.legalMoves.Sort(snapShot.whoToMove);
-
-				// OK, now, get ready to search
-				int bestSoFar;
-
-				if (nodeType == MAXNODE) // Case #1: We are searching a Max Node
+			// Null Move Pruning: try passing our turn - if opponent still can't improve, we can prune
+			if (depth >= NMO_MIN_DEPTH)
+			{
+				// Don't apply NMP when side to move is in check
+				int ownKingField = snapShot.whoToMove == Color.White ? snapShot.whiteKingsField : snapShot.blackKingsField;
+				if (!snapShot.IsFieldChecked(ownKingField))
 				{
-					bestSoFar = ALPHABETA_MINVAL;
-					int currentAlpha = alpha;
-
-					// Loop on the successors
-					for (int i = 0; i < snapShot.legalMoves.Count; i++)
+					int nullMoveDepth = depth - NMO_DEPTH_REDUCTION - 1;
+					int nullMoveScore = AlphaBeta(!nodeType, snapShot, nullMoveDepth, alpha, beta, pvMove);
+					
+					// If null move fails high (>= beta), we can prune this node
+					if (nullMoveScore >= beta)
 					{
+						return beta;  // Fail hard - opponent has nothing better than beta
+					}
+				}
+			}
+
+			// OK, now, get ready to search
+			int bestSoFar;
+
+			if (nodeType == MAXNODE) // Case #1: We are searching a Max Node
+			{
+				bestSoFar = ALPHABETA_MINVAL;
+				int currentAlpha = alpha;
+
+				// Loop on the successors
+				for (int i = 0; i < snapShot.legalMoves.Count; i++)
+				{
 						move = snapShot.legalMoves[i];
 
 						// Compute a board position resulting from the current successor
 						snapShot.PerformMove(move,true);
 moveCounter++;
 						// And search it in turn
-						int moveScore = AlphaBeta(!nodeType,snapShot,depth-1,currentAlpha,beta, pvMove);
+						int moveScore;
+						
+						// Late Move Reductions: for quiet moves after the first few, search with reduced depth
+						bool hasCapture = (move.PieceHit != PieceType.None);
+						bool givesCheck = (snapShot.history != null && snapShot.history.Count > 0 && 
+							snapShot.history[snapShot.history.Count-1].OpponentSituationCode == SituationCode.Check);
+						bool isQuietMove = !hasCapture && !givesCheck;
+						
+						if (isQuietMove && i >= LMR_MIN_MOVES && depth >= LMR_MIN_DEPTH)
+						{
+							// Search with reduced depth
+							moveScore = AlphaBeta(!nodeType, snapShot, depth - LMR_DEPTH_REDUCTION - 1, currentAlpha, beta, pvMove);
+							
+							// If reduced search fails high, return immediately
+							// If reduced search fails low or improves alpha, re-search at full depth
+							if (moveScore > currentAlpha && moveScore < beta)
+							{
+								moveScore = AlphaBeta(!nodeType, snapShot, depth - 1, currentAlpha, beta, pvMove);
+							}
+						}
+						else
+						{
+							moveScore = AlphaBeta(!nodeType,snapShot,depth-1,currentAlpha,beta, pvMove);
+						}
 moveCounter--;
 						snapShot.Rollback(1);
 
@@ -1964,7 +2005,30 @@ moveCounter--;
 						snapShot.PerformMove(move,true);
 moveCounter++;
 						// And search it in turn
-						int moveScore = AlphaBeta(!nodeType,snapShot,depth-1,alpha,currentBeta, pvMove);
+						int moveScore;
+						
+						// Late Move Reductions: for quiet moves after the first few, search with reduced depth
+						bool hasCapture = (move.PieceHit != PieceType.None);
+						bool givesCheck = (snapShot.history != null && snapShot.history.Count > 0 && 
+							snapShot.history[snapShot.history.Count-1].OpponentSituationCode == SituationCode.Check);
+						bool isQuietMove = !hasCapture && !givesCheck;
+						
+						if (isQuietMove && i >= LMR_MIN_MOVES && depth >= LMR_MIN_DEPTH)
+						{
+							// Search with reduced depth
+							moveScore = AlphaBeta(!nodeType, snapShot, depth - LMR_DEPTH_REDUCTION - 1, alpha, currentBeta, pvMove);
+							
+							// If reduced search fails low, return immediately
+							// If reduced search fails high or improves beta, re-search at full depth
+							if (moveScore < currentBeta && moveScore > alpha)
+							{
+								moveScore = AlphaBeta(!nodeType, snapShot, depth - 1, alpha, currentBeta, pvMove);
+							}
+						}
+						else
+						{
+							moveScore = AlphaBeta(!nodeType,snapShot,depth-1,alpha,currentBeta, pvMove);
+						}
 moveCounter--;
 						snapShot.Rollback(1);
 
@@ -2862,6 +2926,51 @@ moveCounter--;
 		/// </summary>
 		public class PVS : BestMovePicker
 		{
+			private bool IsLikelyZugzwangPosition(SnapShot snapShot)
+			{
+				if (snapShot == null)
+					return false;
+
+				int totalMajors =
+					snapShot.whiteQueensCount + snapShot.blackQueensCount +
+					snapShot.whiteRooksCount + snapShot.blackRooksCount;
+				if (totalMajors > 0)
+					return false;
+
+				int totalMinors =
+					snapShot.whiteKnightsCount + snapShot.blackKnightsCount +
+					snapShot.whiteBishopsCount + snapShot.blackBishopsCount;
+
+				return totalMinors <= 2;
+			}
+
+			private Move InternalIterativeDeepeningMove(bool nodeType, SnapShot snapShot, int depth, int alpha, int beta, Move pvMove)
+			{
+				if (snapShot == null || snapShot.legalMoves == null || snapShot.legalMoves.Count == 0 || depth < 2)
+					return null;
+
+				int bestScore = nodeType == MAXNODE ? ALPHABETA_MINVAL : ALPHABETA_MAXVAL;
+				Move bestMove = null;
+
+				for (int i = 0; i < snapShot.legalMoves.Count; i++)
+				{
+					Move move = snapShot.legalMoves[i];
+					snapShot.PerformMove(move, true);
+					moveCounter++;
+					int score = AlphaBeta(nodeType == MAXNODE ? MINNODE : MAXNODE, snapShot, depth - 1, alpha, beta, pvMove);
+					moveCounter--;
+					snapShot.Rollback(1);
+
+					if ((nodeType == MAXNODE && score > bestScore) || (nodeType == MINNODE && score < bestScore))
+					{
+						bestScore = score;
+						bestMove = move.Clone();
+					}
+				}
+
+				return bestMove;
+			}
+
 			/// <summary>
 			/// Gets or sets the maximum quiescence search depth for the PVS engine.
 			/// </summary>
@@ -3171,8 +3280,9 @@ moveCounter--;
 				if (depth == 0)
 					return QuiescenceSearch(nodeType,snapShot,maxQuiescenceDepth,alpha,beta,pvMove);
 
-				// Null move pruning -- skip when in check (illegal to pass in check)
-				if (!inCheck && nodeType == MAXNODE && depth > 2 && beta < 10000) // not mate score
+				// Null move pruning -- skip when in check and in likely zugzwang positions
+				bool zugzwangProne = IsLikelyZugzwangPosition(snapShot);
+				if (!inCheck && !zugzwangProne && nodeType == MAXNODE && depth > 2 && beta < 10000) // not mate score
 				{
 					int nullReduction = depth > 6 ? 3 : 2;
 					int nullScore = AlphaBeta(MINNODE, snapShot, depth - nullReduction, beta - 1, beta, null);
@@ -3184,6 +3294,14 @@ moveCounter--;
 				Move ttMove = new Move();
 				if (!tTable.LookupBoard(snapShot,ttMove) || ttMove.FieldNumberFrom < 0)
 					ttMove = null;
+
+				// Internal Iterative Deepening (IID): if TT has no move, run a small probe to seed ordering.
+				if (ttMove == null && depth >= 4 && snapShot.legalMoves.Count > 1)
+				{
+					Move iidMove = InternalIterativeDeepeningMove(nodeType, snapShot, 2, alpha, beta, pvMove);
+					if (iidMove != null)
+						ttMove = iidMove;
+				}
 
 				// Include killer moves in ordering
 				List<Move> orderedMoves = GetOrderedMovesWithKillers(snapShot, false, ttMove, pvMove, depth);
@@ -3208,21 +3326,40 @@ moveCounter--;
 				for (int i = 0; i < orderedMoves.Count; i++)
 				{
 					Move move = orderedMoves[i];
-					int reduction = 0;
-					// LMR -- skip when in check (all responses to check matter)
-					if (!inCheck && i >= 4 && depth > 2 && move.PieceHit == PieceType.None)
-					{
-						reduction = depth > 6 ? 2 : 1;
-					}
 					snapShot.PerformMove(move,true);
 					moveCounter++;
-					int searchDepth = Math.Max(1, depth - 1 - reduction);
-					int moveScore = AlphaBeta(nodeType == MAXNODE ? MINNODE : MAXNODE,snapShot,searchDepth,alpha,beta,pvMove);
-					// Re-search with full depth if reduced and score is good
-					if (reduction > 0 && moveScore > alpha && moveScore < beta)
+
+					int moveScore;
+					if (i == 0)
 					{
+						// PV move: full window, full depth
 						moveScore = AlphaBeta(nodeType == MAXNODE ? MINNODE : MAXNODE,snapShot,depth - 1,alpha,beta,pvMove);
 					}
+					else if (nodeType == MAXNODE)
+					{
+						// PVS: null window to quickly refute non-PV moves; apply LMR for late quiet moves
+						int reduction = !inCheck && i >= 4 && depth > 2 && move.PieceHit == PieceType.None ? (depth > 6 ? 2 : 1) : 0;
+						int searchDepth = Math.Max(1, depth - 1 - reduction);
+						moveScore = AlphaBeta(MINNODE,snapShot,searchDepth,alpha,alpha + 1,pvMove);
+						if (moveScore > alpha && moveScore < beta)
+						{
+							// Null window failed high — confirm at full depth
+							if (reduction > 0)
+								moveScore = AlphaBeta(MINNODE,snapShot,depth - 1,alpha,alpha + 1,pvMove);
+							if (moveScore > alpha && moveScore < beta)
+								moveScore = AlphaBeta(MINNODE,snapShot,depth - 1,alpha,beta,pvMove);
+						}
+					}
+					else
+					{
+						// MINNODE subsequent moves: LMR with full window
+						int reduction = !inCheck && i >= 4 && depth > 2 && move.PieceHit == PieceType.None ? (depth > 6 ? 2 : 1) : 0;
+						int searchDepth = Math.Max(1, depth - 1 - reduction);
+						moveScore = AlphaBeta(MAXNODE,snapShot,searchDepth,alpha,beta,pvMove);
+						if (reduction > 0 && moveScore > alpha && moveScore < beta)
+							moveScore = AlphaBeta(MAXNODE,snapShot,depth - 1,alpha,beta,pvMove);
+					}
+
 					moveCounter--;
 					snapShot.Rollback(1);
 
@@ -3480,6 +3617,25 @@ moveCounter--;
 		private int[] columnOwnPassedPawnCount = new int[8];
 		private int[] columnOpponentPawnCount = new int[8];
 		private int[] columnLeastAdvancedOpponentPawnFieldNum = new int[8];
+
+		private const int PAWN_HASH_TABLE_SIZE = 32768;
+
+		private sealed class PawnHashEntry
+		{
+			public bool IsValid;
+			public int Key;
+			public int Lock;
+			public Color Perspective;
+			public int PawnRamCount;
+			public int[] ColumnOwnPawnCount = new int[8];
+			public int[] FieldColorPawnCount = new int[2];
+			public int[] ColumnMostAdvancedOwnPawnFieldNum = new int[8];
+			public int[] ColumnOwnPassedPawnCount = new int[8];
+			public int[] ColumnOpponentPawnCount = new int[8];
+			public int[] ColumnLeastAdvancedOpponentPawnFieldNum = new int[8];
+		}
+
+		private static PawnHashEntry[] pawnHashTable = new PawnHashEntry[PAWN_HASH_TABLE_SIZE];
 
 		// If there are too many pawns on squares of the color of its surviving bishops,
 		// the bishops may be limited in their movement
@@ -3977,6 +4133,8 @@ moveCounter--;
 					}
 				}
 			}
+			
+			score += EvaluateKingSafety(color, endgamePhase);
 			return score;
 		}
 
@@ -4221,6 +4379,95 @@ moveCounter--;
 			return (score * middlegameWeight) >> 8;
 		}
 
+		private int EvaluateKingSafety(Color color, int endgamePhase)
+		{
+			int score = 0;
+			int kingField = color == Color.White ? whiteKingsField : blackKingsField;
+			int kingRank = kingField % 8;
+			int kingFile = kingField >> 3;
+			
+			// In endgames, king safety is less important than centralization
+			if (endgamePhase > 200)
+				return 0;
+
+			// Penalty for king on back rank (vulnerable to back-rank tactics)
+			if (color == Color.White && kingRank == 0)
+				score -= 40;
+			else if (color == Color.Black && kingRank == 7)
+				score -= 40;
+
+			// Penalty for king in center during middlegame/opening (exposed to attacks)
+			if (kingFile >= 2 && kingFile <= 5)
+			{
+				int centerPenalty = 8;
+				score -= centerPenalty;
+			}
+
+			// Bonus for pawn shelter around king (kingside/queenside protection)
+			if (color == Color.White)
+			{
+				// Check for queenside shelter (files 0-2, ranks 0-1)
+				if (kingFile <= 2)
+				{
+					// Pawn directly in front
+					if (kingField + 8 < 64 && IsPawnOfColor(kingField + 8, Color.White)) 
+						score += 6;
+					// Pawn diagonal left
+					if (kingFile > 0 && kingField > 0 && IsPawnOfColor(kingField - 1, Color.White)) 
+						score += 3;
+					// Pawn diagonal right
+					if (kingFile < 7 && kingField < 63 && IsPawnOfColor(kingField + 1, Color.White)) 
+						score += 3;
+				}
+				// Check for kingside shelter (files 5-7, ranks 0-1)
+				else if (kingFile >= 5)
+				{
+					// Pawn directly in front
+					if (kingField + 8 < 64 && IsPawnOfColor(kingField + 8, Color.White)) 
+						score += 6;
+					// Pawn diagonal left
+					if (kingFile > 0 && kingField > 0 && IsPawnOfColor(kingField - 1, Color.White)) 
+						score += 3;
+					// Pawn diagonal right
+					if (kingFile < 7 && kingField < 63 && IsPawnOfColor(kingField + 1, Color.White)) 
+						score += 3;
+				}
+			}
+			else
+			{
+				// Check for queenside shelter (files 0-2, ranks 6-7)
+				if (kingFile <= 2)
+				{
+					// Pawn directly in front
+					if (kingField >= 8 && IsPawnOfColor(kingField - 8, Color.Black)) 
+						score += 6;
+					// Pawn diagonal left
+					if (kingFile > 0 && kingField > 0 && IsPawnOfColor(kingField - 1, Color.Black)) 
+						score += 3;
+					// Pawn diagonal right
+					if (kingFile < 7 && kingField < 63 && IsPawnOfColor(kingField + 1, Color.Black)) 
+						score += 3;
+				}
+				// Check for kingside shelter (files 5-7, ranks 6-7)
+				else if (kingFile >= 5)
+				{
+					// Pawn directly in front
+					if (kingField >= 8 && IsPawnOfColor(kingField - 8, Color.Black)) 
+						score += 6;
+					// Pawn diagonal left
+					if (kingFile > 0 && kingField > 0 && IsPawnOfColor(kingField - 1, Color.Black)) 
+						score += 3;
+					// Pawn diagonal right
+					if (kingFile < 7 && kingField < 63 && IsPawnOfColor(kingField + 1, Color.Black)) 
+						score += 3;
+				}
+			}
+
+			// Scale king safety by phase: more important in middlegame, less in endgame
+			int middlegameWeight = 256 - endgamePhase;
+			return (score * middlegameWeight) >> 8;
+		}
+
 		private int ClampScore(int score, int min, int max)
 		{
 			if (score < min)
@@ -4252,6 +4499,220 @@ moveCounter--;
 				return (piece & 8) == 0;
 			else
 				return (piece & 8) == 8;
+		}
+
+		private int EvaluateCaptureSee(Move move)
+		{
+			if (move == null || move.PieceHit == PieceType.None)
+				return 0;
+
+			byte movingPiece = situation[move.FieldNumberFrom];
+			if (movingPiece == 0)
+				return 0;
+
+			int capturedValue = Helper.PieceType2Value(move.PieceHit);
+			int seeGain = EvaluateSeeSwapSequence(move,movingPiece,capturedValue);
+
+			return (capturedValue * 10) + seeGain;
+		}
+
+		private int EvaluateSeeSwapSequence(Move move, byte movingPiece, int capturedValue)
+		{
+			int fromField = move.FieldNumberFrom;
+			int targetField = move.FieldNumberTo;
+
+			bool[] occupied = BuildOccupancyMap();
+			int[] gain = new int[32];
+			int depth = 0;
+
+			gain[0] = capturedValue;
+
+			occupied[fromField] = false;
+			if (move.MoveCode == MoveCode.EnPassant)
+			{
+				int enPassantCapturedField = GetEnPassantCapturedPawnField(targetField,movingPiece);
+				if (enPassantCapturedField >= 0)
+					occupied[enPassantCapturedField] = false;
+			}
+			occupied[targetField] = true;
+
+			Color sideToCapture = Helper.OpponentColor(GetColorFromPiece(movingPiece));
+
+			while (depth < gain.Length - 1)
+			{
+				int attackerField = FindLeastValuableAttackerField(targetField,sideToCapture,occupied);
+				if (attackerField < 0)
+					break;
+
+				byte attackerPiece = situation[attackerField];
+				int attackerValue = Helper.PieceType2Value((PieceType)(attackerPiece & 7));
+
+				depth++;
+				gain[depth] = attackerValue - gain[depth - 1];
+
+				occupied[attackerField] = false;
+				sideToCapture = Helper.OpponentColor(sideToCapture);
+			}
+
+			for (int i = depth - 1; i >= 0; i--)
+				gain[i] = -Math.Max(-gain[i],gain[i + 1]);
+
+			return gain[0];
+		}
+
+		private bool[] BuildOccupancyMap()
+		{
+			bool[] occupied = new bool[64];
+			for (int i = 0; i < 64; i++)
+				occupied[i] = situation[i] != 0;
+
+			return occupied;
+		}
+
+		private int GetEnPassantCapturedPawnField(int targetField, byte movingPiece)
+		{
+			Color color = GetColorFromPiece(movingPiece);
+			int field = color == Color.White ? targetField - 1 : targetField + 1;
+			if (field < 0 || field > 63)
+				return -1;
+
+			return field;
+		}
+
+		private Color GetColorFromPiece(byte piece)
+		{
+			return (piece & 8) == 0 ? Color.White : Color.Black;
+		}
+
+		private bool IsPieceOfColor(byte piece, Color color)
+		{
+			if (piece == 0)
+				return false;
+
+			return GetColorFromPiece(piece) == color;
+		}
+
+		private int FindLeastValuableAttackerField(int targetField, Color attackerColor, bool[] occupied)
+		{
+			int bestField = -1;
+			int bestValue = int.MaxValue;
+
+			for (int i = 0; i < 64; i++)
+			{
+				if (!occupied[i])
+					continue;
+
+				byte piece = situation[i];
+				if (!IsPieceOfColor(piece,attackerColor))
+					continue;
+
+				if (!DoesPieceAttackSquareWithOccupancy(i,piece,targetField,occupied))
+					continue;
+
+				int value = Helper.PieceType2Value((PieceType)(piece & 7));
+				if (value < bestValue)
+				{
+					bestValue = value;
+					bestField = i;
+				}
+			}
+
+			return bestField;
+		}
+
+		private bool DoesPieceAttackSquareWithOccupancy(int sourceField, byte piece, int targetField, bool[] occupied)
+		{
+			if (sourceField == targetField)
+				return false;
+
+			int sourceFile = sourceField >> 3;
+			int sourceRank = sourceField % 8;
+			int targetFile = targetField >> 3;
+			int targetRank = targetField % 8;
+			int deltaFile = targetFile - sourceFile;
+			int deltaRank = targetRank - sourceRank;
+
+			int type = piece & 7;
+			switch (type)
+			{
+				case (int)PieceType.Pawn:
+					if (GetColorFromPiece(piece) == Color.White)
+						return deltaRank == 1 && Math.Abs(deltaFile) == 1;
+					return deltaRank == -1 && Math.Abs(deltaFile) == 1;
+
+				case (int)PieceType.Knight:
+					int adf = Math.Abs(deltaFile);
+					int adr = Math.Abs(deltaRank);
+					return (adf == 1 && adr == 2) || (adf == 2 && adr == 1);
+
+				case (int)PieceType.Bishop:
+					return IsSlidingAttackWithOccupancy(sourceField,targetField,true,false,occupied);
+
+				case (int)PieceType.Rook:
+					return IsSlidingAttackWithOccupancy(sourceField,targetField,false,true,occupied);
+
+				case (int)PieceType.Queen:
+					return IsSlidingAttackWithOccupancy(sourceField,targetField,true,true,occupied);
+
+				case (int)PieceType.King:
+					return Math.Abs(deltaFile) <= 1 && Math.Abs(deltaRank) <= 1;
+
+				default:
+					return false;
+			}
+		}
+
+		private bool IsSlidingAttackWithOccupancy(int sourceField, int targetField, bool allowDiagonal, bool allowStraight, bool[] occupied)
+		{
+			int sourceFile = sourceField >> 3;
+			int sourceRank = sourceField % 8;
+			int targetFile = targetField >> 3;
+			int targetRank = targetField % 8;
+
+			int fileDelta = targetFile - sourceFile;
+			int rankDelta = targetRank - sourceRank;
+			int absFileDelta = Math.Abs(fileDelta);
+			int absRankDelta = Math.Abs(rankDelta);
+
+			int stepFile;
+			int stepRank;
+
+			if (allowDiagonal && absFileDelta == absRankDelta)
+			{
+				stepFile = fileDelta > 0 ? 1 : -1;
+				stepRank = rankDelta > 0 ? 1 : -1;
+			}
+			else if (allowStraight && (fileDelta == 0 || rankDelta == 0))
+			{
+				if (fileDelta == 0)
+				{
+					stepFile = 0;
+					stepRank = rankDelta > 0 ? 1 : -1;
+				}
+				else
+				{
+					stepFile = fileDelta > 0 ? 1 : -1;
+					stepRank = 0;
+				}
+			}
+			else
+			{
+				return false;
+			}
+
+			int file = sourceFile + stepFile;
+			int rank = sourceRank + stepRank;
+			while (file != targetFile || rank != targetRank)
+			{
+				int field = file * 8 + rank;
+				if (occupied[field])
+					return false;
+
+				file += stepFile;
+				rank += stepRank;
+			}
+
+			return true;
 		}
 
 		private bool DoesPieceAttackSquare(int sourceField, byte piece, int targetField)
@@ -4400,6 +4861,210 @@ moveCounter--;
 			return score;
 		}
 
+		private const int PSQT_SCALE_DIVISOR = 8;
+
+		private static readonly int[] pawnMgPsqt = new int[]
+		{
+			0, 0, 0, 0, 0, 0, 0, 0,
+			98, 134, 61, 95, 68, 126, 34, -11,
+			-6, 7, 26, 31, 65, 56, 25, -20,
+			-14, 13, 6, 21, 23, 12, 17, -23,
+			-27, -2, -5, 12, 17, 6, 10, -25,
+			-26, -4, -4, -10, 3, 3, 33, -12,
+			-35, -1, -20, -23, -15, 24, 38, -22,
+			0, 0, 0, 0, 0, 0, 0, 0
+		};
+
+		private static readonly int[] pawnEgPsqt = new int[]
+		{
+			0, 0, 0, 0, 0, 0, 0, 0,
+			178, 173, 158, 134, 147, 132, 165, 187,
+			94, 100, 85, 67, 56, 53, 82, 84,
+			32, 24, 13, 5, -2, 4, 17, 17,
+			13, 9, -3, -7, -7, -8, 3, -1,
+			4, 7, -6, 1, 0, -5, -1, -8,
+			13, 8, 8, 10, 13, 0, 2, -7,
+			0, 0, 0, 0, 0, 0, 0, 0
+		};
+
+		private static readonly int[] knightMgPsqt = new int[]
+		{
+			-167, -89, -34, -49, 61, -97, -15, -107,
+			-73, -41, 72, 36, 23, 62, 7, -17,
+			-47, 60, 37, 65, 84, 129, 73, 44,
+			-9, 17, 19, 53, 37, 69, 18, 22,
+			-13, 4, 16, 13, 28, 19, 21, -8,
+			-23, -9, 12, 10, 19, 17, 25, -16,
+			-29, -53, -12, -3, -1, 18, -14, -19,
+			-105, -21, -58, -33, -17, -28, -19, -23
+		};
+
+		private static readonly int[] knightEgPsqt = new int[]
+		{
+			-58, -38, -13, -28, -31, -27, -63, -99,
+			-25, -8, -25, -2, -9, -25, -24, -52,
+			-24, -20, 10, 9, -1, -9, -19, -41,
+			-17, 3, 22, 22, 22, 11, 8, -18,
+			-18, -6, 16, 25, 16, 17, 4, -18,
+			-23, -3, -1, 15, 10, -3, -20, -22,
+			-42, -20, -10, -5, -2, -20, -23, -44,
+			-29, -51, -23, -15, -22, -18, -50, -64
+		};
+
+		private static readonly int[] bishopMgPsqt = new int[]
+		{
+			-29, 4, -82, -37, -25, -42, 7, -8,
+			-26, 16, -18, -13, 30, 59, 18, -47,
+			-16, 37, 43, 40, 35, 50, 37, -2,
+			-4, 5, 19, 50, 37, 37, 7, -2,
+			-6, 13, 13, 26, 34, 12, 10, 4,
+			0, 15, 15, 15, 14, 27, 18, 10,
+			4, 15, 16, 0, 7, 21, 33, 1,
+			-33, -3, -14, -21, -13, -12, -39, -21
+		};
+
+		private static readonly int[] bishopEgPsqt = new int[]
+		{
+			-14, -21, -11, -8, -7, -9, -17, -24,
+			-8, -4, 7, -12, -3, -13, -4, -14,
+			2, -8, 0, -1, -2, 6, 0, 4,
+			-3, 9, 12, 9, 14, 10, 3, 2,
+			-6, 3, 13, 19, 7, 10, -3, -9,
+			-12, -3, 8, 10, 13, 3, -7, -15,
+			-14, -18, -7, -1, 4, -9, -15, -27,
+			-23, -9, -23, -5, -9, -16, -5, -17
+		};
+
+		private static readonly int[] rookMgPsqt = new int[]
+		{
+			32, 42, 32, 51, 63, 9, 31, 43,
+			27, 32, 58, 62, 80, 67, 26, 44,
+			-5, 19, 26, 36, 17, 45, 61, 16,
+			-24, -11, 7, 26, 24, 35, -8, -20,
+			-36, -26, -12, -1, 9, -7, 6, -23,
+			-45, -25, -16, -17, 3, 0, -5, -33,
+			-44, -16, -20, -9, -1, 11, -6, -71,
+			-19, -13, 1, 17, 16, 7, -37, -26
+		};
+
+		private static readonly int[] rookEgPsqt = new int[]
+		{
+			13, 10, 18, 15, 12, 12, 8, 5,
+			11, 13, 13, 11, -3, 3, 8, 3,
+			7, 7, 7, 5, 4, -3, -5, -3,
+			4, 3, 13, 1, 2, 1, -1, 2,
+			3, 5, 8, 4, -5, -6, -8, -11,
+			-4, 0, -5, -1, -7, -12, -8, -16,
+			-6, -6, 0, 2, -9, -9, -11, -3,
+			-9, 2, 3, -1, -5, -13, 4, -20
+		};
+
+		private static readonly int[] queenMgPsqt = new int[]
+		{
+			-28, 0, 29, 12, 59, 44, 43, 45,
+			-24, -39, -5, 1, -16, 57, 28, 54,
+			-13, -17, 7, 8, 29, 56, 47, 57,
+			-27, -27, -16, -16, -1, 17, -2, 1,
+			-9, -26, -9, -10, -2, -4, 3, -3,
+			-14, 2, -11, -2, -5, 2, 14, 5,
+			-35, -8, 11, 2, 8, 15, -3, 1,
+			-1, -18, -9, 10, -15, -25, -31, -50
+		};
+
+		private static readonly int[] queenEgPsqt = new int[]
+		{
+			-9, 22, 22, 27, 27, 19, 10, 20,
+			-17, 20, 32, 41, 58, 25, 30, 0,
+			-20, 6, 9, 49, 47, 35, 19, 9,
+			3, 22, 24, 45, 57, 40, 57, 36,
+			-18, 28, 19, 47, 31, 34, 39, 23,
+			-16, -27, 15, 6, 9, 17, 10, 5,
+			-22, -23, -30, -16, -16, -23, -36, -32,
+			-33, -28, -22, -43, -5, -32, -20, -41
+		};
+
+		private static readonly int[] kingMgPsqt = new int[]
+		{
+			-65, 23, 16, -15, -56, -34, 2, 13,
+			29, -1, -20, -7, -8, -4, -38, -29,
+			-9, 24, 2, -16, -20, 6, 22, -22,
+			-17, -20, -12, -27, -30, -25, -14, -36,
+			-49, -1, -27, -39, -46, -44, -33, -51,
+			-14, -14, -22, -46, -44, -30, -15, -27,
+			1, 7, -8, -64, -43, -16, 9, 8,
+			-15, 36, 12, -54, 8, -28, 24, 14
+		};
+
+		private static readonly int[] kingEgPsqt = new int[]
+		{
+			-74, -35, -18, -18, -11, 15, 4, -17,
+			-12, 17, 14, 17, 17, 38, 23, 11,
+			10, 17, 23, 15, 20, 45, 44, 13,
+			-8, 22, 24, 27, 26, 33, 26, 3,
+			-18, -4, 21, 24, 27, 23, 9, -11,
+			-19, -3, 11, 21, 23, 16, 7, -9,
+			-27, -11, 4, 13, 14, 4, -5, -17,
+			-53, -34, -21, -11, -28, -14, -24, -43
+		};
+
+		private static int BoardFieldToPsqtIndex(int fieldNumber, Color pieceColor)
+		{
+			int file = fieldNumber >> 3;
+			int rank = fieldNumber & 7;
+			if (pieceColor == Color.Black)
+				rank = 7 - rank;
+			return (rank << 3) + file;
+		}
+
+		private static int GetPsqtValue(PieceType pieceType, bool endgame, int psqtIndex)
+		{
+			switch (pieceType)
+			{
+				case PieceType.Pawn:
+					return 0;
+				case PieceType.Knight:
+					return endgame ? knightEgPsqt[psqtIndex] : knightMgPsqt[psqtIndex];
+				case PieceType.Bishop:
+					return endgame ? bishopEgPsqt[psqtIndex] : bishopMgPsqt[psqtIndex];
+				case PieceType.Rook:
+					return endgame ? rookEgPsqt[psqtIndex] : rookMgPsqt[psqtIndex];
+				case PieceType.Queen:
+					return endgame ? queenEgPsqt[psqtIndex] : queenMgPsqt[psqtIndex];
+				case PieceType.King:
+					return endgame ? kingEgPsqt[psqtIndex] : kingMgPsqt[psqtIndex];
+				default:
+					return 0;
+			}
+		}
+
+		private int EvaluatePieceSquareTapered(Color color)
+		{
+			int endgamePhase = ComputeEndgamePhase(color);
+			int mgScore = 0;
+			int egScore = 0;
+
+			for (int i = 0; i < 64; i++)
+			{
+				byte piece = situation[i];
+				if (piece == 0)
+					continue;
+
+				PieceType pieceType = (PieceType)(piece & (int)Mask.PieceType);
+				if (pieceType == PieceType.None)
+					continue;
+
+				Color pieceColor = (piece & (int)Mask.Color) == (int)Color.Black ? Color.Black : Color.White;
+				int psqtIndex = BoardFieldToPsqtIndex(i, pieceColor);
+				int mgValue = GetPsqtValue(pieceType, false, psqtIndex);
+				int egValue = GetPsqtValue(pieceType, true, psqtIndex);
+				mgScore += mgValue;
+				egScore += egValue;
+			}
+
+			int blended = ((mgScore * (256 - endgamePhase)) + (egScore * endgamePhase)) >> 8;
+			return blended / PSQT_SCALE_DIVISOR;
+		}
+
 		private int ComputeEndgamePhase(Color color)
 		{
 			int ownNonPawnMaterial;
@@ -4448,6 +5113,7 @@ moveCounter--;
 		{
 			public bool IsDrawnPosition { get; set; }
 			public int MaterialScore { get; set; }
+			public int PieceSquareScore { get; set; }
 			public int PositionalScore { get; set; }
 			public int SpaceControlScore { get; set; }
 			public int MinorWeakSquareScore { get; set; }
@@ -4474,6 +5140,7 @@ moveCounter--;
 				{
 					IsDrawnPosition = true,
 					MaterialScore = 0,
+					PieceSquareScore = 0,
 					PositionalScore = 0,
 					SpaceControlScore = 0,
 					MinorWeakSquareScore = 0,
@@ -4492,6 +5159,7 @@ moveCounter--;
 
 			int endgamePhase = ComputeEndgamePhase(color);
 			int material = EvaluateMaterial(color);
+			int pieceSquare = EvaluatePieceSquareTapered(color);
 			int positional = EvaluateSituation(color);
 
 			int space = EvaluateSpaceControl(color,endgamePhase);
@@ -4508,6 +5176,7 @@ moveCounter--;
 			{
 				IsDrawnPosition = false,
 				MaterialScore = material,
+				PieceSquareScore = pieceSquare,
 				PositionalScore = positional,
 				SpaceControlScore = space,
 				MinorWeakSquareScore = minorWeakSquares,
@@ -4518,7 +5187,7 @@ moveCounter--;
 				TrackedHeuristicsScore = tracked,
 				ResidualPositionalScore = residual,
 				EndgamePhase = endgamePhase,
-				TotalScore = material + positional
+				TotalScore = material + pieceSquare + positional
 			};
 		}
 
@@ -4537,6 +5206,7 @@ moveCounter--;
 			sb.AppendLine("Evaluation breakdown:");
 			sb.AppendLine($"  EndgamePhase: {breakdown.EndgamePhase}");
 			sb.AppendLine($"  Material: {breakdown.MaterialScore}");
+			sb.AppendLine($"  PieceSquare: {breakdown.PieceSquareScore}");
 			sb.AppendLine($"  Positional: {breakdown.PositionalScore}");
 			sb.AppendLine($"    SpaceControl: {breakdown.SpaceControlScore}");
 			sb.AppendLine($"    MinorWeakSquares: {breakdown.MinorWeakSquareScore}");
@@ -4555,6 +5225,9 @@ moveCounter--;
 		// isolated or passed pawns
 		private void AnalyzePawnSituation(Color color)
 		{
+			if (TryLoadPawnHash(color))
+				return;
+
 			// Reset the counters
 			int tmp = color == Color.White ? 0 : 63;
 			for (int i = 0; i < 8; i++)
@@ -4694,6 +5367,71 @@ moveCounter--;
 						columnOwnPassedPawnCount[i] = columnMostAdvancedOwnPawnFieldNum[i];
 				}
 			}
+
+			StorePawnHash(color);
+		}
+
+		private void GetPawnHashCodes(Color color, out int key, out int lockCode)
+		{
+			key = color == Color.White ? 984127 : 1984253;
+			lockCode = color == Color.White ? 561293 : 901723;
+
+			for (int i = 0; i < 64; i++)
+			{
+				byte piece = situation[i];
+				if (piece == 0 || (piece & 7) != (int)PieceType.Pawn)
+					continue;
+
+				key ^= hashKeyComponents[piece,i];
+				lockCode ^= hashLockComponents[piece,i];
+			}
+		}
+
+		private bool TryLoadPawnHash(Color color)
+		{
+			GetPawnHashCodes(color, out int key, out int lockCode);
+			int tableIndex = (key & int.MaxValue) % PAWN_HASH_TABLE_SIZE;
+			PawnHashEntry entry = pawnHashTable[tableIndex];
+
+			if (!entry.IsValid || entry.Key != key || entry.Lock != lockCode || entry.Perspective != color)
+				return false;
+
+			pawnRamCount = entry.PawnRamCount;
+			for (int i = 0; i < 8; i++)
+			{
+				columnOwnPawnCount[i] = entry.ColumnOwnPawnCount[i];
+				columnMostAdvancedOwnPawnFieldNum[i] = entry.ColumnMostAdvancedOwnPawnFieldNum[i];
+				columnOwnPassedPawnCount[i] = entry.ColumnOwnPassedPawnCount[i];
+				columnOpponentPawnCount[i] = entry.ColumnOpponentPawnCount[i];
+				columnLeastAdvancedOpponentPawnFieldNum[i] = entry.ColumnLeastAdvancedOpponentPawnFieldNum[i];
+			}
+			fieldColorPawnCount[0] = entry.FieldColorPawnCount[0];
+			fieldColorPawnCount[1] = entry.FieldColorPawnCount[1];
+
+			return true;
+		}
+
+		private void StorePawnHash(Color color)
+		{
+			GetPawnHashCodes(color, out int key, out int lockCode);
+			int tableIndex = (key & int.MaxValue) % PAWN_HASH_TABLE_SIZE;
+			PawnHashEntry entry = pawnHashTable[tableIndex];
+
+			entry.IsValid = true;
+			entry.Key = key;
+			entry.Lock = lockCode;
+			entry.Perspective = color;
+			entry.PawnRamCount = pawnRamCount;
+			for (int i = 0; i < 8; i++)
+			{
+				entry.ColumnOwnPawnCount[i] = columnOwnPawnCount[i];
+				entry.ColumnMostAdvancedOwnPawnFieldNum[i] = columnMostAdvancedOwnPawnFieldNum[i];
+				entry.ColumnOwnPassedPawnCount[i] = columnOwnPassedPawnCount[i];
+				entry.ColumnOpponentPawnCount[i] = columnOpponentPawnCount[i];
+				entry.ColumnLeastAdvancedOpponentPawnFieldNum[i] = columnLeastAdvancedOpponentPawnFieldNum[i];
+			}
+			entry.FieldColorPawnCount[0] = fieldColorPawnCount[0];
+			entry.FieldColorPawnCount[1] = fieldColorPawnCount[1];
 		}
 
 		/// <summary>
@@ -4727,6 +5465,7 @@ moveCounter--;
 			AnalyzePawnSituation(color);
 			return
 				EvaluateMaterial(color)+
+				EvaluatePieceSquareTapered(color)+
 				EvaluateSituation(color);
 		}
 
@@ -4815,7 +5554,7 @@ moveCounter--;
 				if (pieceType == PieceType.Knight || pieceType == PieceType.Bishop || pieceType == PieceType.Queen)
 					normalized = (byte)((x & 8) | (x & 7));
 
-				hash ^= hashKeyComponents[normalized == 0 ? 0 : normalized-1,i];
+				hash ^= hashLockComponents[normalized,i];
 			}
 			return hash;
 		}
@@ -5117,12 +5856,19 @@ moveCounter--;
 																34,	32,	0,	0,	0,	0,	40,	42,
 																33,	32,	0,	0,	0,	0,	40,	41	};
 		private static int[,] hashKeyComponents = new int[((int)(Byte.MaxValue))+1,64];
+		private static int[,] hashLockComponents = new int[((int)(Byte.MaxValue))+1,64];
 
 		static SnapShot()
 		{
 			for (int i = 0; i < ((int)(Byte.MaxValue))+1; i++)
 				for (int j = 0; j < 64; j++)
+				{
 					hashKeyComponents[i,j] = Helper.RandomNumber();
+					hashLockComponents[i,j] = Helper.RandomNumber();
+				}
+
+			for (int i = 0; i < PAWN_HASH_TABLE_SIZE; i++)
+				pawnHashTable[i] = new PawnHashEntry();
 		}
 
 		public override int GetHashCode()
@@ -5145,18 +5891,12 @@ moveCounter--;
 
 		public int GetHashLockCode()
 		{
-/*
-			string situationString = (whoToMove == Color.White ? "x:" : "y:");
-			for (int i = 0; i < 64; i++)
-				situationString += situation[i].ToString()+".";
-			return situationString.GetHashCode();
-*/
 			int hash = whoToMove == Color.White ? 609342 : 7455925;
 			for (int i = 0; i < 64; i++)
 			{
 				byte x = situation[i];
 				if (x != 0)
-					hash ^= hashKeyComponents[x-1,i];
+					hash ^= hashLockComponents[x,i];
 			}
 			return hash;
 		}
@@ -8130,6 +8870,15 @@ moveCounter--;
 		}
 
 		/// <summary>
+		/// Computes best move using the MTD engine without opening book assistance.
+		/// </summary>
+		/// <returns>Best move returned by the MTD search engine.</returns>
+		public Move GetBestMoveMTD()
+		{
+			return MTDPicker.GetBestMove(this.Clone(), null);
+		}
+
+		/// <summary>
 		/// Finds the best move using the PVS algorithm.
 		/// </summary>
 		/// <param name="openingBookFileName">Opening book file name.</param>
@@ -8150,6 +8899,35 @@ moveCounter--;
 					openings = null;
 			}
 			return PVSPicker.GetBestMove(this.Clone(),openings);
+		}
+
+		/// <summary>
+		/// Finds the best move using the PVS algorithm without opening book assistance.
+		/// </summary>
+		/// <returns>The best move found.</returns>
+		public Move GetBestMovePVS()
+		{
+			return PVSPicker.GetBestMove(this.Clone(), null);
+		}
+
+		/// <summary>
+		/// Configures shared search limits for both built-in engines.
+		/// </summary>
+		/// <param name="maxIterationDepth">Maximum iterative-deepening depth.</param>
+		/// <param name="maxSearchSize">Maximum total nodes budget per search.</param>
+		public static void ConfigureSearchLimits(int maxIterationDepth, int maxSearchSize)
+		{
+			if (maxIterationDepth > 0)
+			{
+				MTDPicker.MaxIterationDepth = maxIterationDepth;
+				PVSPicker.MaxIterationDepth = maxIterationDepth;
+			}
+
+			if (maxSearchSize > 0)
+			{
+				MTDPicker.MaxSearchSize = maxSearchSize;
+				PVSPicker.MaxSearchSize = maxSearchSize;
+			}
 		}
 
 	}

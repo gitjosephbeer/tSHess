@@ -59,6 +59,20 @@ namespace tSHess.Tests
         }
 
         [Fact]
+        public void EvaluateComplete_RepeatedCrossPerspectiveCalls_AreStable()
+        {
+            SnapShot snapshot = SnapShot.FromFen("r2q1rk1/pp1bbppp/2n1pn2/2pp4/3P4/2N1PN2/PPQ1BPPP/R1B2RK1 w - - 0 10");
+
+            int whiteFirst = snapshot.EvaluateComplete(Color.White);
+            int blackFirst = snapshot.EvaluateComplete(Color.Black);
+            int whiteSecond = snapshot.EvaluateComplete(Color.White);
+            int blackSecond = snapshot.EvaluateComplete(Color.Black);
+
+            Assert.Equal(whiteFirst,whiteSecond);
+            Assert.Equal(blackFirst,blackSecond);
+        }
+
+        [Fact]
         public void FromFen_StartupPosition_HasBalancedMaterial()
         {
             SnapShot snapshot = SnapShot.FromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1");

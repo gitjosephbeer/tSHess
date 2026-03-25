@@ -1,0 +1,31 @@
+Comparing MTD vs PVS on benchmark suite...
+Runs per position: 3
+Search depth cap: 7
+Search node cap: 20000
+Opening book: disabled
+
+Position                       | MTD (ms)        | PVS (ms)       
+----------------------------------------------------------------
+Start Position                 | 4030            | 1495           
+Open Sicilian                  | 5306            | 1373           
+King Attack                    | 557             | 1617           
+Closed Center                  | 4655            | 1626           
+Endgame Rook                   | 518             | 267            
+Minor Piece Endgame            | 274             | 252            
+Tactical Middlegame            | 5292            | 1601           
+Queenside Pressure             | 4282            | 1273           
+
+Summary:
+  Positions: 8
+
+  MTD:
+    Total searches: 24
+    Total time: 74748 ms
+    Throughput: 0.32 searches/s
+
+  PVS:
+    Total searches: 24
+    Total time: 28518 ms
+    Throughput: 0.84 searches/s
+
+  PVS is 61.8% faster than MTD
